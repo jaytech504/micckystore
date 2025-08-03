@@ -7,6 +7,13 @@ const OTPVerification = () => {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  // Add this to prevent hydration issues
+  const [mounted, setMounted] = useState(false)
+  
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const [otp, setOtp] = useState(Array(6).fill(''))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -15,10 +22,15 @@ const OTPVerification = () => {
   const email = searchParams.get('email') || ''
 
   useEffect(() => {
-    if (!email) {
+    if (!email && mounted) {
       router.push('/login')
     }
-  }, [email, router])
+  }, [email, router, mounted])
+
+  // Don't render until mounted to prevent hydration mismatch
+  if (!mounted) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+  }
 
   const handleOtpChange = (index: number, value: string) => {
     if (!/^\d?$/.test(value)) return
