@@ -111,7 +111,7 @@ const LoginPage = () => {
         {/* Left Side - Form */}
         <div className="w-1/2 bg-gray-50 flex items-center justify-center px-12">
           <div className="w-full max-w-md">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Login</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome</h1>
             <p className="text-gray-500 mb-8">Log into your account</p>
 
             {error && (

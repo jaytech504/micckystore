@@ -1,69 +1,57 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-const NewPasswordPage = () => {
+const EmailVerificationPage = () => {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
-  const email = searchParams.get('email') || '';
-  const otp = searchParams.get('otp') || '';
-
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setIsLoading(true);
     setError('');
     setSuccess('');
 
-    if (!newPassword || newPassword.length < 6) {
-      setError('Password must be at least 6 characters.');
-      setLoading(false);
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.');
-      setLoading(false);
+    if (!email) {
+      setError('Please enter your email address.');
+      setIsLoading(false);
       return;
     }
 
     try {
-      const res = await fetch('https://mickkystore.onrender.com/api/users/verify-otp-and-set-password', {
+      const res = await fetch('https://mickkystore.onrender.com/api/users/request-password-reset', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          identifier: email,
-          otp: otp,
-          newPassword: newPassword,
+        body: JSON.stringify({ 
+          identifier: email 
         }),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || 'Password reset failed');
+        throw new Error(data?.message || 'Failed to send OTP');
       }
 
-      setSuccess('Password reset successful! Redirecting to login...');
+      setSuccess('OTP sent successfully! Redirecting to verification...');
       setTimeout(() => {
-        router.push('/login');
+        router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
       }, 2000);
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message || 'Something went wrong');
+      if (err && typeof err === 'object' && 'message' in err) {
+        setError((err as { message?: string }).message || 'Something went wrong');
       } else {
         setError('Something went wrong');
       }
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -71,14 +59,12 @@ const NewPasswordPage = () => {
     <div className="min-h-screen text-black">
       {/* Desktop Layout */}
       <div className="hidden lg:flex min-h-screen">
-        {/* Left Side - New Password Form on white background */}
-        <div className="w-1/2 bg-white rounded-l-3xl p-12 flex items-center">
+        {/* Left Side - Form */}
+        <div className="w-1/2 bg-gray-50 flex items-center justify-center px-12">
           <div className="w-full max-w-md">
-            <h1 className="text-4xl font-bold text-black mb-6">New Password</h1>
-            <p className="text-gray-600 mb-8 text-base leading-relaxed">
-              Please enter your new password below.<br />
-              Make sure it is strong and secure.
-            </p>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Email Verification</h1>
+            <p className="text-gray-500 mb-8">Enter your email to receive OTP</p>
+
             {error && (
               <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm">
                 {error}
@@ -89,44 +75,54 @@ const NewPasswordPage = () => {
                 {success}
               </div>
             )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-gray-700 text-sm mb-4">New Password</label>
+                <label className="block text-gray-600 text-sm mb-2">
+                  Enter Email Address
+                </label>
                 <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg font-semibold bg-white text-black"
-                  placeholder="Enter new password"
-                  minLength={6}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-black"
+                  placeholder="example@gmail.com"
                   required
-                  disabled={loading}
+                  disabled={isLoading}
                 />
               </div>
-              <div>
-                <label className="block text-gray-700 text-sm mb-4">Confirm New Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg font-semibold bg-white text-black"
-                  placeholder="Confirm new password"
-                  minLength={6}
-                  required
-                  disabled={loading}
-                />
-              </div>
+
               <button
                 type="submit"
-                className="w-full bg-pink-400 hover:bg-pink-500 text-white font-semibold py-4 px-6 rounded-xl transition-colors"
-                disabled={loading}
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 transition-all duration-200 disabled:opacity-50 flex items-center justify-center"
               >
-                {loading ? 'Resetting...' : 'Reset Password'}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="animate-spin mr-2" size={20} />
+                    Sending OTP...
+                  </>
+                ) : (
+                  'Send OTP'
+                )}
               </button>
+
+              {/* Back to Login - Desktop */}
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => router.push('/login')}
+                  className="text-sm text-yellow-500 font-medium hover:underline disabled:opacity-50"
+                  disabled={isLoading}
+                >
+                  Back to Login
+                </button>
+              </div>
             </form>
           </div>
         </div>
-        {/* Right Side - Branding (unchanged) */}
+
+        {/* Right Side - Branding */}
         <div className="w-1/2 bg-yellow-400 flex items-center justify-center px-12 relative">
           <div className="text-center relative">
             <div className="relative mb-12">
@@ -151,12 +147,14 @@ const NewPasswordPage = () => {
                 </div>
               </div>
             </div>
+
             <h1 className="text-3xl font-bold text-gray-900">
               Mickkystore Software
             </h1>
           </div>
         </div>
       </div>
+
       {/* Mobile Layout */}
       <div className="lg:hidden min-h-screen bg-white">
         <div className="pt-12 pb-8 px-6 text-center">
@@ -172,11 +170,13 @@ const NewPasswordPage = () => {
             </div>
             <p className="text-xs text-gray-500 mt-1">Organized at its Peak</p>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Set New Password</h1>
-          <p className="text-gray-500 text-sm mb-6">
-            Please enter your new password below.
+
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Email Verification</h1>
+          <p className="text-gray-500 text-sm">
+            Enter your email to receive OTP
           </p>
         </div>
+
         <div className="px-6">
           {error && (
             <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm">
@@ -188,47 +188,57 @@ const NewPasswordPage = () => {
               {success}
             </div>
           )}
+
           <div className="bg-gray-50 rounded-2xl p-6 mb-6">
             <h2 className="text-center text-gray-700 font-medium mb-6">
-              New Password
+              Email Verification
             </h2>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-gray-700 text-sm mb-2">New Password</label>
+                <label className="block text-gray-600 text-sm mb-2">
+                  Enter Email Address
+                </label>
                 <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg font-semibold bg-white text-black"
-                  placeholder="Enter new password"
-                  minLength={6}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-black"
+                  placeholder="example@gmail.com"
                   required
-                  disabled={loading}
+                  disabled={isLoading}
                 />
               </div>
-              <div>
-                <label className="block text-gray-700 text-sm mb-2">Confirm New Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg font-semibold bg-white text-black"
-                  placeholder="Confirm new password"
-                  minLength={6}
-                  required
-                  disabled={loading}
-                />
-              </div>
+
               <button
                 type="submit"
-                className="w-full bg-pink-400 hover:bg-pink-500 text-white font-semibold py-4 px-6 rounded-xl transition-colors"
-                disabled={loading}
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 rounded-xl font-medium text-lg hover:from-purple-600 hover:to-pink-600 transition-all duration-200 disabled:opacity-50 flex items-center justify-center mt-6"
               >
-                {loading ? 'Resetting...' : 'Reset Password'}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="animate-spin mr-2" size={20} />
+                    Sending OTP...
+                  </>
+                ) : (
+                  'Send OTP'
+                )}
               </button>
+
+              <div className="flex justify-center pt-4">
+                <button
+                  type="button"
+                  onClick={() => router.push('/login')}
+                  className="text-sm text-yellow-500 font-medium hover:underline disabled:opacity-50"
+                  disabled={isLoading}
+                >
+                  Back to Login
+                </button>
+              </div>
             </form>
           </div>
         </div>
+
         <div className="flex justify-center pb-6">
           <div className="w-32 h-1 bg-gray-900 rounded-full"></div>
         </div>
@@ -237,4 +247,4 @@ const NewPasswordPage = () => {
   );
 };
 
-export default NewPasswordPage;
+export default EmailVerificationPage; 

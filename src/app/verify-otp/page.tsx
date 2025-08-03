@@ -79,7 +79,8 @@ const OTPVerification = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ 
+          identifier: email }),
       })
 
       if (!res.ok) {
