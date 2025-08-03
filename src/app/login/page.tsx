@@ -31,31 +31,56 @@ const LoginPage = () => {
   setSuccess('');
 
   try {
-    console.log('Sending login:', { identifier: email, password });
-
-    const response = await axios.post(
-      'https://mickkystore.onrender.com/api/auth/login',
-      {
-        identifier: email,
-        password,
+    // Step 1: Login
+    const loginRes = await fetch('https://mickkystore.onrender.com/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+      body: JSON.stringify({
+        identifier: email,
+        password: password,
+      }),
+    });
 
-    if (response.status === 200) {
-      setSuccess('Login successful! Redirecting...');
-      // Optional: Save token to localStorage or context here
-      router.push('/new-password');
+    if (!loginRes.ok) {
+      const data = await loginRes.json();
+      throw new Error(data?.message || 'Invalid login credentials');
     }
-  } catch (err: any) {
-    const errorMsg =
-      err.response?.data?.message || err.message || 'Something went wrong. Try again.';
-    console.log('Login error:', err.response?.data);
-    setError(errorMsg);
+
+    // Step 2: Request OTP
+    const otpRes = await fetch('https://mickkystore.onrender.com/api/users/request-password-reset', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        identifier: email }),
+    });
+
+    if (!otpRes.ok) {
+      const data = await otpRes.json();
+      throw new Error(data?.message || 'Failed to send OTP');
+    }
+
+    // Try to log the OTP if present in the response
+    try {
+      const otpData = await otpRes.clone().json();
+      if (otpData && otpData.otp) {
+        console.log('OTP:', otpData.otp);
+      }
+    } catch {
+      // ignore if response is not JSON or doesn't contain OTP
+    }
+
+    // Step 3: Redirect to OTP page
+    router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'message' in err) {
+      setError((err as { message?: string }).message || 'Something went wrong');
+    } else {
+      setError('Something went wrong');
+    }
   } finally {
     setIsLoading(false);
   }
@@ -158,7 +183,7 @@ const LoginPage = () => {
             <div className="relative mb-12">
               <div className="bg-white rounded-2xl p-8 shadow-lg max-w-sm mx-auto relative">
                 <h2 className="text-2xl font-bold text-yellow-500 mb-4 leading-tight">
-                  It's a new day to start over...
+                  It&apos;s a new day to start over...
                 </h2>
                 <p className="text-gray-700 text-sm leading-relaxed mb-16">
                   We intend to make job process easier and seamless. So,
@@ -202,10 +227,10 @@ const LoginPage = () => {
           </div>
 
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Sign in</h1>
-          <p className="text-gray-500 text-sm">
-            Don't have an account?{' '}
-            <span className="text-yellow-500 font-medium">Contact Admin</span>
-          </p>
+            <p className="text-gray-500 text-sm">
+              Don&apos;t have an account?{' '}
+              <span className="text-yellow-500 font-medium">Contact Admin</span>
+            </p>
         </div>
 
         <div className="px-6">
