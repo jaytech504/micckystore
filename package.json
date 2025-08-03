@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "postbuild": "netlify-next",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "@netlify/next": "^1.4.9",
     "axios": "^1.11.0",
     "lucide-react": "^0.536.0",
     "next": "15.4.5",
