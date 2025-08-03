@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
 
 const LoginPage = () => {
   const router = useRouter();

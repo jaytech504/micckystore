@@ -75,8 +75,12 @@ const OTPVerification = () => {
       }
 
       alert('OTP resent to your email.')
-    } catch (err: any) {
-      setError(err.message || 'Could not resend OTP.')
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'Could not resend OTP.')
+      } else {
+        setError('Could not resend OTP.')
+      }
     } finally {
       setResending(false)
     }
