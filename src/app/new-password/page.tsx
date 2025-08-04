@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-const NewPasswordPage = () => {
+const NewPasswordForm = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -98,86 +98,48 @@ const NewPasswordPage = () => {
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg font-semibold bg-white text-black"
                   placeholder="Enter new password"
-                  minLength={6}
                   required
-                  disabled={loading}
                 />
               </div>
               <div>
-                <label className="block text-gray-700 text-sm mb-4">Confirm New Password</label>
+                <label className="block text-gray-700 text-sm mb-4">Confirm Password</label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg font-semibold bg-white text-black"
                   placeholder="Confirm new password"
-                  minLength={6}
                   required
-                  disabled={loading}
                 />
               </div>
               <button
                 type="submit"
-                className="w-full bg-pink-400 hover:bg-pink-500 text-white font-semibold py-4 px-6 rounded-xl transition-colors"
                 disabled={loading}
+                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Resetting...' : 'Reset Password'}
+                {loading ? 'Setting Password...' : 'Set New Password'}
               </button>
             </form>
           </div>
         </div>
-        {/* Right Side - Branding (unchanged) */}
-        <div className="w-1/2 bg-yellow-400 flex items-center justify-center px-12 relative">
-          <div className="text-center relative">
-            <div className="relative mb-12">
-              <div className="bg-white rounded-2xl p-8 shadow-lg max-w-sm mx-auto relative">
-                <h2 className="text-2xl font-bold text-yellow-500 mb-4 leading-tight">
-                  It&apos;s a new day to start over...
-                </h2>
-                <p className="text-gray-700 text-sm leading-relaxed mb-16">
-                  We intend to make job process easier and seamless. So,
-                  everyone gets to connect together and work as a team easily.
-                </p>
-              </div>
-              <div className="absolute bottom-0 right-0 bg-white rounded-lg px-4 py-3 shadow-lg flex items-center space-x-2 transform translate-x-2 translate-y-2">
-                <div className="w-8 h-8 bg-yellow-100 rounded flex items-center justify-center">
-                  <div className="w-4 h-4 bg-yellow-400 rounded"></div>
-                </div>
-                <div className="text-left">
-                  <p className="text-xs text-gray-500">Stay organized</p>
-                  <p className="text-sm font-semibold text-purple-600">
-                    Mickkystore
-                  </p>
-                </div>
-              </div>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Mickkystore Software
-            </h1>
+
+        {/* Right Side - Background Image */}
+        <div className="w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 rounded-r-3xl flex items-center justify-center">
+          <div className="text-center text-white">
+            <h2 className="text-3xl font-bold mb-4">Welcome Back!</h2>
+            <p className="text-xl opacity-90">Your account is almost ready.</p>
           </div>
         </div>
       </div>
+
       {/* Mobile Layout */}
-      <div className="lg:hidden min-h-screen bg-white">
-        <div className="pt-12 pb-8 px-6 text-center">
-          <div className="mb-6">
-            <div className="flex items-center justify-center space-x-2">
-              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                <div className="w-4 h-4 bg-white rounded"></div>
-              </div>
-              <span className="text-xl font-bold">
-                <span className="text-purple-600">MICKKY</span>
-                <span className="text-yellow-500">STORE</span>
-              </span>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Organized at its Peak</p>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Set New Password</h1>
-          <p className="text-gray-500 text-sm mb-6">
-            Please enter your new password below.
+      <div className="lg:hidden min-h-screen bg-white p-6">
+        <div className="max-w-md mx-auto pt-12">
+          <h1 className="text-3xl font-bold text-black mb-6">New Password</h1>
+          <p className="text-gray-600 mb-8 text-base leading-relaxed">
+            Please enter your new password below.<br />
+            Make sure it is strong and secure.
           </p>
-        </div>
-        <div className="px-6">
           {error && (
             <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm">
               {error}
@@ -188,52 +150,48 @@ const NewPasswordPage = () => {
               {success}
             </div>
           )}
-          <div className="bg-gray-50 rounded-2xl p-6 mb-6">
-            <h2 className="text-center text-gray-700 font-medium mb-6">
-              New Password
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-gray-700 text-sm mb-2">New Password</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg font-semibold bg-white text-black"
-                  placeholder="Enter new password"
-                  minLength={6}
-                  required
-                  disabled={loading}
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 text-sm mb-2">Confirm New Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg font-semibold bg-white text-black"
-                  placeholder="Confirm new password"
-                  minLength={6}
-                  required
-                  disabled={loading}
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-pink-400 hover:bg-pink-500 text-white font-semibold py-4 px-6 rounded-xl transition-colors"
-                disabled={loading}
-              >
-                {loading ? 'Resetting...' : 'Reset Password'}
-              </button>
-            </form>
-          </div>
-        </div>
-        <div className="flex justify-center pb-6">
-          <div className="w-32 h-1 bg-gray-900 rounded-full"></div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-gray-700 text-sm mb-4">New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg font-semibold bg-white text-black"
+                placeholder="Enter new password"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 text-sm mb-4">Confirm Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg font-semibold bg-white text-black"
+                placeholder="Confirm new password"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Setting Password...' : 'Set New Password'}
+            </button>
+          </form>
         </div>
       </div>
     </div>
+  );
+};
+
+const NewPasswordPage = () => {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <NewPasswordForm />
+    </Suspense>
   );
 };
 
