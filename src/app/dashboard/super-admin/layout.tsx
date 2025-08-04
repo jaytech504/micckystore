@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import {
   Search,
   Bell,
-  Home,
   LayoutDashboard,
   Calculator,
   Package,
@@ -33,8 +32,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
 
   const navItems = [
-    { icon: Home, label: 'Home', href: '/dashboard/super-admin' },
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/super-admin/overview' },
+    { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/super-admin' },
     { icon: Calculator, label: 'Accounting', href: '/dashboard/super-admin/accounting' },
     { icon: Package, label: 'Inventory', href: '/dashboard/super-admin/inventory' },
     { icon: Users, label: 'Customers', href: '/dashboard/super-admin/customers' },
@@ -48,7 +46,7 @@ export default function DashboardLayout({
   ];
 
   const preferencesItems = [
-    { icon: Settings, label: 'Settings', href: '/dashboard/super- admin/settings' },
+    { icon: Settings, label: 'Settings', href: '/dashboard/super-admin/settings' },
     { icon: User, label: 'Contact Admin', href: '/dashboard/super-admin/contact-admin' },
     { icon: LogOut, label: 'Log Out', href: '/logout', textColor: 'text-red-500' },
   ];
@@ -66,9 +64,11 @@ export default function DashboardLayout({
   }, []);
 
   const isActiveRoute = (href: string) => {
-    if (href === '/dashboard/superadmin') {
-      return pathname === '/dashboard/superadmin';
+    // For exact match on superadmin home
+    if (href === '/dashboard/super-admin') {
+      return pathname === '/dashboard/super-admin';
     }
+    // For all other routes, check if current path starts with the href
     return pathname.startsWith(href);
   };
 
@@ -84,20 +84,18 @@ export default function DashboardLayout({
 
       {/* Sidebar */}
       <div className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-sm border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out
+        fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-sm border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out lg:rounded-tr-xl
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Logo */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">M</span>
-              </div>
-              <span className="font-bold text-lg">
-                <span className="text-pink-500">MICKKY</span>
-                <span className="text-gray-700">STORE</span>
-              </span>
+            <div className="flex items-center">
+              <img 
+                src="/logo.png" 
+                alt="MickkyStore Logo" 
+                className="h-8 object-contain"
+              />
             </div>
             {/* Close button for mobile */}
             <button 
@@ -112,6 +110,12 @@ export default function DashboardLayout({
         {/* Navigation Items */}
         <div className="flex-1 py-4 overflow-y-auto">
           <nav className="px-3 space-y-1">
+            {/* Home text (not a link) */}
+            <div className="flex items-center px-3 py-2.5 text-sm font-medium text-gray-700">
+              <span className="truncate">Home</span>
+            </div>
+            
+            {/* Rest of navigation items */}
             {navItems.map((item, index) => {
               const IconComponent = item.icon;
               const isActive = isActiveRoute(item.href);
@@ -166,7 +170,7 @@ export default function DashboardLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col lg:ml-0">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200 px-4 sm:px-6 py-4 sticky top-0 z-30">
+        <header className="bg-white shadow-sm border-b border-gray-200 px-4 sm:px-6 py-2 sticky top-0 z-30">
           <div className="flex items-center justify-between">
             {/* Left side - Menu and Search */}
             <div className="flex items-center space-x-4">
