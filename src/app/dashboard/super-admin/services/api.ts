@@ -63,7 +63,7 @@ export const dashboardAPI = {
     timeRange: 'daily' | 'monthly' = 'daily',
     branchId?: string
   ): Promise<ChartData> => {
-    const params: any = { timeRange };
+    const params: Record<string, string> = { timeRange };
     if (branchId && branchId !== 'all') {
       params.branchId = branchId;
     }
@@ -114,12 +114,16 @@ export interface PaginatedResponse<T> {
 }
 
 // Error handling utility
-export const handleAPIError = (error: any): string => {
-  if (error.response?.data?.message) {
-    return error.response.data.message;
+export const handleAPIError = (error: unknown): string => {
+  if (error && typeof error === 'object' && 'response' in error) {
+    const apiError = error as { response?: { data?: { message?: string } } };
+    if (apiError.response?.data?.message) {
+      return apiError.response.data.message;
+    }
   }
-  if (error.message) {
-    return error.message;
+  if (error && typeof error === 'object' && 'message' in error) {
+    const errorWithMessage = error as { message: string };
+    return errorWithMessage.message;
   }
   return 'An unexpected error occurred';
 };

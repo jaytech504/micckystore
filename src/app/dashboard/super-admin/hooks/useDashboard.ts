@@ -35,7 +35,7 @@ export function useDashboard(): UseDashboardReturn {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
-  const [chartData, setChartData] = useState<ChartData>({
+  const [chartData] = useState<ChartData>({
     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     datasets: [
       {
@@ -61,7 +61,7 @@ export function useDashboard(): UseDashboardReturn {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
   const [isLoadingActivities, setIsLoadingActivities] = useState(true);
-  const [isLoadingChart, setIsLoadingChart] = useState(true);
+  const [_isLoadingChart] = useState(true);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
 
   // Mock data for development - Replace with actual API calls
@@ -219,7 +219,7 @@ export function useDashboard(): UseDashboardReturn {
     isLoadingStats,
     isLoadingBranches,
     isLoadingActivities,
-    isLoadingChart,
+    isLoadingChart: _isLoadingChart,
     isLoadingUser,
     
     // Actions

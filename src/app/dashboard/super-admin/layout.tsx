@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 import {
   Search,
   Bell,
@@ -91,9 +92,11 @@ export default function DashboardLayout({
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <img 
+              <Image
                 src="/logo.png" 
                 alt="MickkyStore Logo" 
+                width={180} 
+                height={40}
                 className="h-8 object-contain"
               />
             </div>
