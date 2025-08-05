@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 const EmailVerificationPage = () => {
   const router = useRouter();
@@ -95,7 +96,7 @@ const EmailVerificationPage = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 transition-all duration-200 disabled:opacity-50 flex items-center justify-center"
+                className="w-full bg-gradient-to-r bg-[#E866B7] text-white py-3 rounded-lg font-medium hover:from-[#E866B7] hover:to-pink-600 transition-all duration-200 disabled:opacity-50 flex items-center justify-center"
               >
                 {isLoading ? (
                   <>
@@ -123,11 +124,11 @@ const EmailVerificationPage = () => {
         </div>
 
         {/* Right Side - Branding */}
-        <div className="w-1/2 bg-yellow-400 flex items-center justify-center px-12 relative">
+        <div className="w-1/2 bg-[#FBB906] flex items-center justify-center px-12 relative">
           <div className="text-center relative">
             <div className="relative mb-12">
               <div className="bg-white rounded-2xl p-8 shadow-lg max-w-sm mx-auto relative">
-                <h2 className="text-2xl font-bold text-yellow-500 mb-4 leading-tight">
+                <h2 className="text-2xl font-bold text-[#FBB906] mb-4 leading-tight">
                   It&apos;s a new day to start over...
                 </h2>
                 <p className="text-gray-700 text-sm leading-relaxed mb-16">
@@ -137,7 +138,7 @@ const EmailVerificationPage = () => {
               </div>
               <div className="absolute bottom-0 right-0 bg-white rounded-lg px-4 py-3 shadow-lg flex items-center space-x-2 transform translate-x-2 translate-y-2">
                 <div className="w-8 h-8 bg-yellow-100 rounded flex items-center justify-center">
-                  <div className="w-4 h-4 bg-yellow-400 rounded"></div>
+                  <div className="w-4 h-4 bg-[#FBB906] rounded"></div>
                 </div>
                 <div className="text-left">
                   <p className="text-xs text-gray-500">Stay organized</p>
@@ -147,7 +148,6 @@ const EmailVerificationPage = () => {
                 </div>
               </div>
             </div>
-
             <h1 className="text-3xl font-bold text-gray-900">
               Mickkystore Software
             </h1>
@@ -160,13 +160,13 @@ const EmailVerificationPage = () => {
         <div className="pt-12 pb-8 px-6 text-center">
           <div className="mb-6">
             <div className="flex items-center justify-center space-x-2">
-              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                <div className="w-4 h-4 bg-white rounded"></div>
-              </div>
-              <span className="text-xl font-bold">
-                <span className="text-purple-600">MICKKY</span>
-                <span className="text-yellow-500">STORE</span>
-              </span>
+            <Image
+                src="/logo.png" 
+                alt="MickkyStore Logo" 
+                width={180} 
+                height={40}
+                className="h-8 object-contain"
+              />
             </div>
             <p className="text-xs text-gray-500 mt-1">Organized at its Peak</p>
           </div>
@@ -213,7 +213,7 @@ const EmailVerificationPage = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 rounded-xl font-medium text-lg hover:from-purple-600 hover:to-pink-600 transition-all duration-200 disabled:opacity-50 flex items-center justify-center mt-6"
+                className="w-full bg-gradient-to-r bg-[#E866B7] text-white py-3 rounded-lg font-medium hover:from-[#E866B7] hover:to-pink-600 transition-all duration-200 disabled:opacity-50 flex items-center justify-center"
               >
                 {isLoading ? (
                   <>

@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   Calculator,
   Package,
-  Users,
   Wrench,
   MessageSquare,
   Users as TeamIcon,
@@ -36,7 +35,6 @@ export default function DashboardLayout({
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/super-admin' },
     { icon: Calculator, label: 'Accounting', href: '/dashboard/super-admin/accounting' },
     { icon: Package, label: 'Inventory', href: '/dashboard/super-admin/inventory' },
-    { icon: Users, label: 'Customers', href: '/dashboard/super-admin/customers' },
     { icon: Wrench, label: 'Repair Tracking', href: '/dashboard/super-admin/repair-tracking' },
     { icon: MessageSquare, label: 'Cross Messaging', href: '/dashboard/super-admin/cross-messaging' },
     { icon: TeamIcon, label: 'Team Space', href: '/dashboard/super-admin/team-space' },
@@ -130,7 +128,7 @@ export default function DashboardLayout({
                   onClick={() => setIsSidebarOpen(false)}
                   className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
                     isActive
-                      ? 'bg-pink-500 text-white'
+                      ? 'bg-[#E866B7] text-white'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
@@ -194,11 +192,11 @@ export default function DashboardLayout({
               </button>
               
               <div className="relative hidden sm:block">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Search"
-                  className="pl-10 pr-4 py-2 w-64 lg:w-80 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                  className="pl-10 pr-4 py-2 w-64 lg:w-80 text-black bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
                 />
               </div>
             </div>
@@ -232,11 +230,11 @@ export default function DashboardLayout({
           {/* Mobile search bar */}
           <div className="mt-4 sm:hidden">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black w-4 h-4" />
               <input
                 type="text"
                 placeholder="Search"
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                className="w-full pl-10 pr-4 py-2 text-black bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
               />
             </div>
           </div>

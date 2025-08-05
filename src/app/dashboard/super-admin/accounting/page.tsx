@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Legend } from 'recharts';
 import { 
   ChevronDown, 
@@ -55,7 +55,7 @@ const MetricCard = ({ title, amount, percentage, trend, icon, bgColor }: MetricC
     <div className="flex items-center justify-between">
       <div>
         <p className="text-sm text-gray-600 mb-1">{title}</p>
-        <p className="text-3xl font-bold text-gray-900">{amount}</p>
+        <p className="text-2xl font-bold text-gray-900">{amount}</p>
       </div>
       <div className={`w-12 h-12 ${bgColor} rounded-lg flex items-center justify-center`}>
         {icon}
@@ -104,6 +104,7 @@ const StatusBadge = ({ status }: StatusBadgeProps) => {
 };
 
 const Dashboard = () => {
+  const [selectedBranch, setSelectedBranch] = useState("All Branches");
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -112,12 +113,18 @@ const Dashboard = () => {
           <h1 className="text-2xl font-bold text-gray-900">Hello Samuel</h1>
           <p className="text-gray-600">Here is an overview of Mickkystore&apos;s accounting data</p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">Branch:</span>
-          <div className="flex items-center space-x-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded">
-            <span className="text-sm font-medium">General</span>
-            <ChevronDown className="w-4 h-4" />
-          </div>
+          <select
+            value={selectedBranch}
+            onChange={(e) => setSelectedBranch(e.target.value)}
+            className="border rounded px-3 py-1.5 text-sm bg-white text-[#FBB906]"
+          >
+            <option>All Branches</option>
+            <option>Gbagada</option>
+            <option>Ikeja</option>
+            <option>Lekki</option>
+          </select>
         </div>
       </div>
 

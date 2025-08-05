@@ -115,7 +115,7 @@ const NewPasswordForm = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r bg-[#E866B7] text-white py-3 rounded-lg font-medium hover:from-[#E866B7] hover:to-pink-600 transition-all duration-200 disabled:opacity-50 flex items-center justify-center"
               >
                 {loading ? 'Setting Password...' : 'Set New Password'}
               </button>
@@ -123,11 +123,33 @@ const NewPasswordForm = () => {
           </div>
         </div>
 
-        {/* Right Side - Background Image */}
-        <div className="w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 rounded-r-3xl flex items-center justify-center">
-          <div className="text-center text-white">
-            <h2 className="text-3xl font-bold mb-4">Welcome Back!</h2>
-            <p className="text-xl opacity-90">Your account is almost ready.</p>
+        <div className="w-1/2 bg-[#FBB906] flex items-center justify-center px-12 relative">
+          <div className="text-center relative">
+            <div className="relative mb-12">
+              <div className="bg-white rounded-2xl p-8 shadow-lg max-w-sm mx-auto relative">
+                <h2 className="text-2xl font-bold text-[#FBB906] mb-4 leading-tight">
+                  It&apos;s a new day to start over...
+                </h2>
+                <p className="text-gray-700 text-sm leading-relaxed mb-16">
+                  We intend to make job process easier and seamless. So,
+                  everyone gets to connect together and work as a team easily.
+                </p>
+              </div>
+              <div className="absolute bottom-0 right-0 bg-white rounded-lg px-4 py-3 shadow-lg flex items-center space-x-2 transform translate-x-2 translate-y-2">
+                <div className="w-8 h-8 bg-yellow-100 rounded flex items-center justify-center">
+                  <div className="w-4 h-4 bg-[#FBB906] rounded"></div>
+                </div>
+                <div className="text-left">
+                  <p className="text-xs text-gray-500">Stay organized</p>
+                  <p className="text-sm font-semibold text-purple-600">
+                    Mickkystore
+                  </p>
+                </div>
+              </div>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Mickkystore Software
+            </h1>
           </div>
         </div>
       </div>
