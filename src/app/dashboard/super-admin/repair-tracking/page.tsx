@@ -37,6 +37,7 @@ interface EngineerStats {
 const RepairTrackingPage = () => {
   const [selectedTicket, setSelectedTicket] = useState<RepairLog | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [selectBranch, setSelectBranch] = useState("All Branches");
 
   const repairLogs: RepairLog[] = [
     {
@@ -180,7 +181,7 @@ const RepairTrackingPage = () => {
   };
 
   return (
-    <div className="flex-1 bg-gray-50 p-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
@@ -188,12 +189,18 @@ const RepairTrackingPage = () => {
             <h1 className="text-2xl font-semibold text-gray-900">All Repair Logs</h1>
             <p className="text-gray-500">Repair tracking</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">Branch:</span>
-            <div className="flex items-center gap-1 bg-white px-3 py-1 rounded border">
-              <span className="text-orange-500 font-medium">General</span>
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            </div>
+            <select
+              value={selectBranch}
+              onChange={(e) => setSelectBranch(e.target.value)}
+              className="border rounded px-3 py-1.5 text-sm bg-white text-[#FBB906]"
+            >
+              <option>All Branches</option>
+              <option>Gbagada</option>
+              <option>Ikeja</option>
+              <option>Lekki</option>
+            </select>
           </div>
         </div>
       </div>
@@ -239,14 +246,14 @@ const RepairTrackingPage = () => {
               {repairLogs.map((log, index) => (
                 <tr key={index} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleTicketClick(log)}>
                   <td className="px-4 py-4">
-                    <span className="text-blue-600 font-medium">{log.ticketId}</span>
+                    <span className="text-blue-600 text-xs font-medium">{log.ticketId}</span>
                   </td>
-                  <td className="px-4 py-4 text-gray-900">{log.device}</td>
-                  <td className="px-4 py-4 text-gray-900">{log.issue}</td>
-                  <td className="px-4 py-4 text-gray-900">{log.branch}</td>
-                  <td className="px-4 py-4 text-gray-900">{log.engineerAssigned}</td>
-                  <td className="px-4 py-4 text-gray-900">{log.tagDate}</td>
-                  <td className="px-4 py-4 text-gray-900">{log.dueDate}</td>
+                  <td className="px-4 py-4 text-xs text-gray-900">{log.device}</td>
+                  <td className="px-4 py-4 text-xs text-gray-900">{log.issue}</td>
+                  <td className="px-4 py-4 text-xs text-gray-900">{log.branch}</td>
+                  <td className="px-4 py-4 text-xs text-gray-900">{log.engineerAssigned}</td>
+                  <td className="px-4 py-4 text-xs text-gray-900">{log.tagDate}</td>
+                  <td className="px-4 py-4 text-xs text-gray-900">{log.dueDate}</td>
                   <td className="px-4 py-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(log.status)}`}>
                       {log.status}
@@ -286,12 +293,12 @@ const RepairTrackingPage = () => {
                 <tbody className="divide-y divide-gray-200">
                   {auditLogs.map((log, index) => (
                     <tr key={index}>
-                      <td className="px-4 py-3 text-gray-900">{log.time}</td>
-                      <td className="px-4 py-3 text-gray-900">{log.assigned}</td>
-                      <td className="px-4 py-3 text-gray-900">{log.received}</td>
-                      <td className="px-4 py-3 text-gray-900">{log.date}</td>
-                      <td className="px-4 py-3 text-gray-900">{log.lastUpdated}</td>
-                      <td className="px-4 py-3 text-gray-900">{log.edited}</td>
+                      <td className="px-4 py-3 text-xs text-gray-900">{log.time}</td>
+                      <td className="px-4 py-3 text-xs text-gray-900">{log.assigned}</td>
+                      <td className="px-4 py-3 text-xs text-gray-900">{log.received}</td>
+                      <td className="px-4 py-3 text-xs text-gray-900">{log.date}</td>
+                      <td className="px-4 py-3 text-xs text-gray-900">{log.lastUpdated}</td>
+                      <td className="px-4 py-3 text-xs text-gray-900">{log.edited}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -369,9 +376,9 @@ const RepairTrackingPage = () => {
       {/* Modal */}
       {showModal && selectedTicket && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm sm:max-w-md">
             <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">Repair Detail</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Repair Detail</h2>
               <button
                 onClick={closeModal}
                 className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -379,74 +386,62 @@ const RepairTrackingPage = () => {
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ticket ID:</label>
-                  <span className="text-gray-900">{selectedTicket.ticketId}</span>
-                </div>
-                <div></div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name:</label>
-                  <span className="text-gray-900">{selectedTicket.customerName || 'N/A'}</span>
-                </div>
-                <div></div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number:</label>
-                  <span className="text-gray-900">{selectedTicket.phoneNumber || 'N/A'}</span>
-                </div>
-                <div></div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Device:</label>
-                  <span className="text-gray-900">{selectedTicket.device}</span>
-                </div>
-                <div></div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Serial/IMEI:</label>
-                  <span className="text-gray-900">{selectedTicket.serialIMEI || 'N/A'}</span>
-                </div>
-                <div></div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Issue Logged:</label>
-                  <span className="text-gray-900">{selectedTicket.issue}</span>
-                </div>
-                <div></div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Engineer:</label>
-                  <span className="text-gray-900">{selectedTicket.engineerAssigned}</span>
-                </div>
-                <div></div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status:</label>
-                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedTicket.status)}`}>
-                    {selectedTicket.status}
-                  </span>
-                </div>
-                <div></div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date Tagged:</label>
-                  <span className="text-gray-900">{selectedTicket.tagDate}</span>
-                </div>
-                <div></div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Expected Completion Date:</label>
-                  <span className="text-gray-900">{selectedTicket.expectedCompletionDate || 'N/A'}</span>
-                </div>
-                <div></div>
+            <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Ticket ID:</label>
+                <span className="text-sm text-gray-900">{selectedTicket.ticketId}</span>
               </div>
               
-              <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Diagnosis/Notes:</label>
-                <div className="border rounded-lg p-3 bg-gray-50 min-h-[80px]">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Customer Name:</label>
+                <span className="text-sm text-gray-900">{selectedTicket.customerName || 'N/A'}</span>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Phone Number:</label>
+                <span className="text-sm text-gray-900">{selectedTicket.phoneNumber || 'N/A'}</span>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Device:</label>
+                <span className="text-sm text-gray-900">{selectedTicket.device}</span>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Serial/IMEI:</label>
+                <span className="text-sm text-gray-900">{selectedTicket.serialIMEI || 'N/A'}</span>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Issue Logged:</label>
+                <span className="text-sm text-gray-900">{selectedTicket.issue}</span>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Assigned Engineer:</label>
+                <span className="text-sm text-gray-900">{selectedTicket.engineerAssigned}</span>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Status:</label>
+                <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedTicket.status)}`}>
+                  {selectedTicket.status}
+                </span>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Date Tagged:</label>
+                <span className="text-sm text-gray-900">{selectedTicket.tagDate}</span>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Expected Completion Date:</label>
+                <span className="text-sm text-gray-900">{selectedTicket.expectedCompletionDate || 'N/A'}</span>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-2">Diagnosis/Notes:</label>
+                <div className="border rounded p-2 bg-gray-50 min-h-[60px] text-sm">
                   <span className="text-gray-600">{selectedTicket.diagnosis || 'No diagnosis available'}</span>
                 </div>
               </div>

@@ -152,7 +152,6 @@ const defaultPurchaseOrder: PurchaseOrder = {
   totalStocksPurchased: 123
 };
 
-// Page component for Next.js App Router - params and searchParams are now Promises
 export default function DashboardPage({
   params,
   searchParams,
@@ -169,8 +168,6 @@ export default function DashboardPage({
     notes: ''
   });
 
-  // Since params and searchParams are Promises, you would need to use them differently
-  // For now, we'll use the component state for branch selection
 
   const handleTransferSubmit = () => {
     if (transferForm.productId && transferForm.fromBranchId && transferForm.toBranchId && transferForm.quantity) {
@@ -212,7 +209,7 @@ export default function DashboardPage({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 space-y-6">
       <div className="space-y-6">
         {/* Header Section */}
         <div className="flex items-center justify-between">
