@@ -196,7 +196,7 @@ const EmployeeManagementMain = () => {
 
         {/* Stats Section */}
         <div className="text-center">
-          <div className="text-4xl font-bold text-orange-500 leading-none mb-1">
+          <div className="text-4xl font-bold text-[#FBB906] leading-none mb-1">
             20
           </div>
           <div className="text-sm text-gray-600 font-medium">
@@ -301,7 +301,7 @@ const EmployeeManagementMain = () => {
                   <td className="px-3 py-4">
                     <div className="flex items-center gap-2">
                       <a 
-                        href="#" 
+                        href="/dashboard/super-admin/team-space/profile-detail" 
                         className="p-2 text-pink-500 bg-gray-50 rounded-md hover:bg-pink-500 hover:text-white transition-colors"
                       >
                         <Eye className="h-3.5 w-3.5" />
