@@ -243,7 +243,7 @@ const EmployeeManagementMain = () => {
             Add New Employee
           </a>
           <a 
-            href="#" 
+            href="/dashboard/super-admin/team-space/task-management" 
             className="bg-white text-gray-600 px-6 py-3 rounded-lg font-medium border border-gray-200 hover:bg-gray-50 transition-colors no-underline"
           >
             Task Management
@@ -307,7 +307,7 @@ const EmployeeManagementMain = () => {
                         <Eye className="h-3.5 w-3.5" />
                       </a>
                       <a 
-                        href="#" 
+                        href="" 
                         className="p-2 text-pink-500 bg-gray-50 rounded-md hover:bg-pink-500 hover:text-white transition-colors"
                       >
                         <Edit className="h-3.5 w-3.5" />
