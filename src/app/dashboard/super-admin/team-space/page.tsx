@@ -307,7 +307,7 @@ const EmployeeManagementMain = () => {
                         <Eye className="h-3.5 w-3.5" />
                       </a>
                       <a 
-                        href="" 
+                        href="/dashboard/super-admin/team-space/add-employee" 
                         className="p-2 text-pink-500 bg-gray-50 rounded-md hover:bg-pink-500 hover:text-white transition-colors"
                       >
                         <Edit className="h-3.5 w-3.5" />

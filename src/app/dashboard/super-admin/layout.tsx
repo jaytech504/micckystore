@@ -38,7 +38,6 @@ export default function DashboardLayout({
     { icon: Wrench, label: 'Repair Tracking', href: '/dashboard/super-admin/repair-tracking' },
     { icon: MessageSquare, label: 'Cross Messaging', href: '/dashboard/super-admin/cross-messaging' },
     { icon: TeamIcon, label: 'Team Space', href: '/dashboard/super-admin/team-space' },
-    { icon: Settings, label: 'System Management', href: '/dashboard/super-admin/system-management' },
     { icon: FileText, label: 'Audit Logs', href: '/dashboard/super-admin/audit-logs' },
     { icon: Calendar, label: 'Calendar', href: '/dashboard/super-admin/calendar' },
     { icon: Mail, label: 'Messages', href: '/dashboard/super-admin/messages' },
@@ -70,6 +69,9 @@ export default function DashboardLayout({
     // For all other routes, check if current path starts with the href
     return pathname.startsWith(href);
   };
+
+  // Check if notification route is active
+  const isNotificationActive = pathname.startsWith('/dashboard/super-admin/notify');
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -116,25 +118,33 @@ export default function DashboardLayout({
               <span className="truncate">Home</span>
             </div>
             
-            {/* Rest of navigation items */}
+            {/* Navigation items with Others section */}
             {navItems.map((item, index) => {
               const IconComponent = item.icon;
               const isActive = isActiveRoute(item.href);
               
               return (
-                <Link
-                  key={index}
-                  href={item.href}
-                  onClick={() => setIsSidebarOpen(false)}
-                  className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-[#E866B7] text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <IconComponent className="w-5 h-5 mr-3 flex-shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                </Link>
+                <React.Fragment key={index}>
+                  {/* Add 'Others' text after Inventory (index 2) */}
+                  {index === 3 && (
+                    <div className="flex items-center px-3 py-2.5 text-sm font-medium text-gray-700 mt-4">
+                      <span className="truncate">Others</span>
+                    </div>
+                  )}
+                  
+                  <Link
+                    href={item.href}
+                    onClick={() => setIsSidebarOpen(false)}
+                    className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                      isActive
+                        ? 'bg-[#E866B7] text-white'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <IconComponent className="w-5 h-5 mr-3 flex-shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                </React.Fragment>
               );
             })}
           </nav>
@@ -208,11 +218,17 @@ export default function DashboardLayout({
                 <Search className="w-5 h-5 text-gray-600" />
               </button>
               
-              <button className="p-2 hover:bg-gray-100 rounded-lg relative">
-                <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-              </button>
-              
+              <Link href='/dashboard/super-admin/notify'>
+                <button className={`p-2 hover:bg-gray-100 rounded-lg relative ${
+                  isNotificationActive ? 'bg-white' : ''
+                }`}>
+                  <Bell className={`w-5 h-5 ${
+                    isNotificationActive ? 'text-[#E866B7]' : 'text-gray-600'
+                  }`} />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                </button>
+              </Link>
+
               <div className="flex items-center space-x-2 sm:space-x-3">
                 <div className="w-8 h-8 bg-gray-300 rounded-full overflow-hidden flex-shrink-0">
                   <div className="w-full h-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center">

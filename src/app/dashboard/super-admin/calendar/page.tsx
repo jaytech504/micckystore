@@ -138,10 +138,12 @@ const CalendarPage = () => {
         {/* Left Sidebar */}
         <div className="xl:w-70 space-y-6 bg-white rounded-lg p-4 shadow-sm border">
           {/* Add New Event Button */}
-          <button className="w-full bg-[#E866B7] text-sm hover:bg-pink-600 text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 font-medium">
-            <Plus className="w-4 h-4" />
-            Add New Event
-          </button>
+          <a href='/dashboard/super-admin/calendar/add-task'>
+            <button className="w-full bg-[#E866B7] text-sm hover:bg-pink-400 text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 font-medium">
+              <Plus className="w-4 h-4" />
+              Add New Event
+            </button>
+          </a>
 
           {/* You are going to section */}
           <div className="p-4">
