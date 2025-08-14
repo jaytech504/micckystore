@@ -80,8 +80,8 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
   }, []);
 
   const isActive = (href: string) => {
-    if (href === '/dashboard' && pathname === '/dashboard') return true;
-    if (href !== '/dashboard' && pathname.startsWith(href)) return true;
+    if (href === '/dashboard/accounting' && pathname === '/dashboard/accounting') return true;
+    if (href !== '/dashboard/accounting' && pathname.startsWith(href)) return true;
     return false;
   };
 
