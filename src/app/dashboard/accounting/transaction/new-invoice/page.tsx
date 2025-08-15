@@ -77,16 +77,15 @@ export default function NewInvoice() {
     <div className="space-y-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="relative mb-6">
-        <div className="absolute top-0 right-0 text-xs text-gray-500">
-          Last Update: Current date and time
-        </div>
-        
-        <div>
-          <h1 className="text-3xl font-semibold text-gray-900 mb-2">Transactions</h1>
-          <p className="text-gray-600 text-sm">
-            Monitor all financial activities, revenue, expenses, and invoices.
-          </p>
+        <div className="mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4">
+          <div>
+            <h1 className="text-2xl lg:text-2xl font-bold text-gray-900 mb-2">Transaction</h1>
+            <p className="text-gray-600 text-sm">Monitor all financial activities, revenue, expenses, and invoices.</p>
+          </div>
+          <div className="text-sm text-gray-500 mt-4 lg:mt-0">
+            Last Update: Current date and time
+          </div>
         </div>
       </div>
 

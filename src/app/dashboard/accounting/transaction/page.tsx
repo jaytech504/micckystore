@@ -200,16 +200,15 @@ const TransactionsPage = () => {
   return (
     <div className="space-y-6">
       {/* Header with Last Update */}
-      <div className="relative mb-6">
-        <div className="absolute top-0 right-0 text-xs text-gray-500">
-          Last Update: Current date and time
-        </div>
-        
-        <div>
-          <h1 className="text-3xl font-semibold text-gray-900 mb-2">Transactions</h1>
-          <p className="text-gray-600 text-sm">
-            Monitor all financial activities, revenue, expenses, and invoices.
-          </p>
+      <div className="mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4">
+          <div>
+            <h1 className="text-2xl lg:text-2xl font-bold text-gray-900 mb-2">Transaction</h1>
+            <p className="text-gray-600 text-sm">Monitor all financial activities, revenue, expenses, and invoices.</p>
+          </div>
+          <div className="text-sm text-gray-500 mt-4 lg:mt-0">
+            Last Update: Current date and time
+          </div>
         </div>
       </div>
 
@@ -413,7 +412,7 @@ const TransactionsPage = () => {
         {/* See More Button */}
         <div className="p-4 border-t border-gray-100">
           <Link
-            href="/invoices"
+            href="/dashboard/accounting/transaction/invoice"
             className="float-right bg-gray-50 border border-gray-200 text-gray-600 px-4 py-2 rounded-md text-sm hover:bg-gray-100 transition-colors"
           >
             See More

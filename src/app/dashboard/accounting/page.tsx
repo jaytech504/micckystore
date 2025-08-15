@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
-import { Search, Download, Plus, ArrowUpRight, TrendingUp, TrendingDown, ShoppingBag, Users, Package } from 'lucide-react';
+import { Search,ChevronDown, Download, Plus, ArrowUpRight, TrendingUp, TrendingDown, ShoppingBag, Users, Package } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, BarChart, Bar, Legend, ResponsiveContainer } from 'recharts';
 
 
@@ -9,6 +10,9 @@ import { LineChart, Line, XAxis, YAxis, BarChart, Bar, Legend, ResponsiveContain
 
 const Dashboard = () => {
   const [mounted, setMounted] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState('Lekki');
+  const [locationOpen, setLocationOpen] = useState(false);
+  const locations: string[] = ['Lekki', 'Gbagada', 'Ikeja'];
 
   // Ensure component is mounted before rendering charts
   useEffect(() => {
@@ -38,6 +42,35 @@ const Dashboard = () => {
     { day: 'Sunday', online: 20000, offline: 8000 },
   ];
 
+  const LocationDropdown = () => (
+    <div className="relative">
+      <button
+        onClick={() => setLocationOpen(!locationOpen)}
+        className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:border-gray-300 transition-colors"
+      >
+        <span className="text-sm text-gray-600">Location:</span>
+        <span className="text-sm text-amber-500 font-medium">{selectedLocation}</span>
+        <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${locationOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {locationOpen && (
+        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-full">
+          {locations.map((option) => (
+            <button
+              key={option}
+              onClick={() => {
+                setSelectedLocation(option);
+                setLocationOpen(false);
+              }}
+              className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg"
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6 bg-gray-50">
       {/* Header */}
@@ -63,12 +96,7 @@ const Dashboard = () => {
             />
           </div>
           <div className="flex items-center gap-3">
-            <label className='text-gray-900'>Location:</label>
-            <select className="px-2 py-1.5 border text-sm text-[#FBB906] border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500">
-              <option>Lekki</option>
-              <option>Gbagada</option>
-              <option>Ikeja</option>
-            </select>
+            <LocationDropdown />
             <button className="flex text-black text-sm items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
               <Download className="w-4 h-4" />
               Download report
@@ -200,14 +228,17 @@ const Dashboard = () => {
 
         {/* Invoice Status */}
         <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-sm text-gray-900">Monitor all invoices past their due date</h3>
+          <div className="flex justify-between mb-6">
+            <div className='w-27'>
+              <h3 className="text-xs text-gray-900">Monitor all invoices past their due date</h3>
             </div>
-            <button className="flex items-center text-sm gap-2 px-3 py-2 bg-[#E866B7] text-white rounded-lg hover:bg-pink-400 transition-colors">
-              <Plus className="w-4 h-4" />
-              New Invoice
-            </button>
+            <Link
+            href="/dashboard/accounting/transaction/new-invoice"
+            className="bg-[#E866B7] text-white px-2 py-2 rounded-lg font-medium text-sm flex items-center gap-2 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+          >
+            <Plus className="w-4 h-4" />
+            New Invoice
+          </Link>
           </div>
           
           <div className="space-y-4">

@@ -43,7 +43,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
   const mainNavigationItems: NavigationItem[] = [
     { name: 'Dashboard', href: '/dashboard/accounting', icon: LayoutDashboard },
     { name: 'Transaction', href: '/dashboard/accounting/transaction', icon: Receipt },
-    { name: 'Accounting', href: '/dashboard/accounting/account', icon: Calculator, hasDropdown: true },
+    { name: 'Financial Overview', href: '/dashboard/accounting/financials', icon: Calculator },
   ];
 
   const otherItems: NavigationItem[] = [
