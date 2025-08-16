@@ -1,7 +1,14 @@
-import React from 'react';
-import { Search, Download, Filter, Plus } from 'lucide-react';
+'use client';
+
+import Link from 'next/link';
+import React, { useState } from 'react';
+import { Search, Download, ChevronDown, Filter, Plus } from 'lucide-react';
 
 const AccountingDashboard = () => {
+  const [selectedLocation, setSelectedLocation] = useState('Lekki');
+  const [locationOpen, setLocationOpen] = useState(false);
+  const locations: string[] = ['Lekki', 'Gbagada', 'Ikeja'];
+  
   const products = [
     {
       name: 'Apple Watch Series 4',
@@ -86,36 +93,65 @@ const AccountingDashboard = () => {
     }
   ];
 
-  return (
-    <div className="flex-1 bg-gray-50 p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex justify-between items-start mb-2">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Accounting dashboard</h1>
-            <p className="text-gray-600">Monitor all financial activities, revenue, expenses, and invoices.</p>
-          </div>
-          <p className="text-sm text-gray-500">Last Update: Current date and time</p>
+  const LocationDropdown = () => (
+    <div className="relative">
+      <button
+        onClick={() => setLocationOpen(!locationOpen)}
+        className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:border-gray-300 transition-colors"
+      >
+        <span className="text-sm text-gray-600">Location:</span>
+        <span className="text-sm text-amber-500 font-medium">{selectedLocation}</span>
+        <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${locationOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {locationOpen && (
+        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-full">
+          {locations.map((option) => (
+            <button
+              key={option}
+              onClick={() => {
+                setSelectedLocation(option);
+                setLocationOpen(false);
+              }}
+              className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg"
+            >
+              {option}
+            </button>
+          ))}
         </div>
-        
-        {/* Search and Controls */}
-        <div className="flex justify-between items-center mt-4">
-          <div className="relative">
+      )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-4 gap-4">
+          <div className="flex-1">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Accounting dashboard</h1>
+            <p className="text-gray-600 text-sm">Monitor all financial activities, revenue, expenses, and invoices.</p>
+          </div>
+          <div className="text-sm text-gray-500 text-left lg:text-right">
+            Last Update: Current date and time
+          </div>
+        </div>
+
+        {/* Search and controls */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="relative flex-1 max-w-full md:max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search"
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+            <input 
+              type="text" 
+              placeholder="Search" 
+              className="pl-10 text-gray-900 text-sm pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-white"
             />
             <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-400">⌘ K</span>
           </div>
-          <div className="flex items-center space-x-4">
-            <select className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none">
-              <option>Location: Lekki</option>
-            </select>
-            <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+            <LocationDropdown />
+            <button className="flex text-black text-sm items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
               <Download className="w-4 h-4" />
-              <span>Download report</span>
+              Download report
             </button>
           </div>
         </div>
@@ -123,46 +159,54 @@ const AccountingDashboard = () => {
 
       {/* Overall Inventory Section */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">Overall Inventory</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {/* Sales */}
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <h3 className="text-blue-600 font-medium mb-2">Sales</h3>
-            <p className="text-2xl font-bold text-gray-900">35 Products</p>
-            <p className="text-sm text-gray-500 mt-1">Last 7 days</p>
-          </div>
-          
-          {/* Total Products */}
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <h3 className="text-orange-500 font-medium mb-2">Total Products</h3>
-            <div className="flex items-baseline space-x-2">
-              <p className="text-2xl font-bold text-gray-900">868</p>
-              <p className="text-lg text-gray-600">₦12,250,000</p>
+        <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm">
+          <h2 className="text-lg text-gray-900 font-semibold mb-4">Overall Inventory</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 md:gap-8">
+            {/* Sales */}
+            <div className="text-center sm:text-left">
+              <h3 className="text-blue-600 text-sm font-medium mb-2">Sales</h3>
+              <p className="text-lg text-gray-900 mb-1">35 Products</p>
+              <p className="text-xs text-gray-500">Last 7 days</p>
             </div>
-            <p className="text-sm text-gray-500 mt-1">Last 7 days</p>
-            <p className="text-xs text-gray-400">Total Inventory Cost (TIC)</p>
-          </div>
-          
-          {/* Top Selling */}
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <h3 className="text-purple-600 font-medium mb-2">Top Selling</h3>
-            <div className="flex items-baseline space-x-2">
-              <p className="text-lg font-semibold text-gray-900">HP 1030 g3</p>
-              <p className="text-lg text-gray-600">₦GN500,000</p>
+            
+            {/* Total Products */}
+            <div className="text-center sm:text-left">
+              <h3 className="text-orange-500 text-sm font-medium mb-2">Total Products</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4">
+                <p className="text-lg text-gray-900">868</p>
+                <p className="text-lg text-gray-900">₦12,250,000</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4">
+                <p className="text-xs text-gray-500">Last 7 days</p>
+                <p className="text-xs text-gray-400">Total Inventory Cost (TIC)</p>
+              </div>
             </div>
-            <p className="text-sm text-gray-500 mt-1">Last 7 days</p>
-            <p className="text-xs text-gray-400">Cost</p>
-          </div>
-          
-          {/* Low Stocks */}
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <h3 className="text-red-500 font-medium mb-2">Low Stocks</h3>
-            <div className="flex items-baseline space-x-2">
-              <p className="text-2xl font-bold text-gray-900">12</p>
-              <p className="text-lg text-gray-600">5</p>
+            
+            {/* Top Selling */}
+            <div className="text-center sm:text-left">
+              <h3 className="text-purple-600 text-sm font-medium mb-2">Top Selling</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4">
+                <p className="text-lg text-gray-900">HP 1030</p>
+                <p className="text-lg text-gray-600">₦GN500,000</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4">
+                <p className="text-xs text-gray-500">Last 7 days</p>
+                <p className="text-xs text-gray-400">Cost</p>
+              </div>
             </div>
-            <p className="text-sm text-gray-500 mt-1">Incoming</p>
-            <p className="text-xs text-gray-400">Not in stock</p>
+            
+            {/* Low Stocks */}
+            <div className="text-center sm:text-left">
+              <h3 className="text-red-500 text-sm font-medium mb-2">Low Stocks</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4">
+                <p className="text-lg text-gray-900">12</p>
+                <p className="text-lg text-gray-600">5</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4">
+                <p className="text-xs text-gray-500">Incoming</p>
+                <p className="text-xs text-gray-400">Not in stock</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -170,70 +214,78 @@ const AccountingDashboard = () => {
       {/* Products Section */}
       <div className="bg-white rounded-lg shadow-sm">
         {/* Products Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold">Products</h2>
-          <div className="flex items-center space-x-3">
-            <button className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center p-4 md:p-6 border-b border-gray-200 gap-4">
+          <h2 className="text-xl text-gray-800 font-semibold">Products</h2>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <Link 
+            href="/dashboard/accounting/inventory/add-product"
+            className="bg-[#FBB906] hover:bg-yellow-400 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm">
               <Plus className="w-4 h-4" />
               <span>Add Product</span>
-            </button>
-            <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2">
-              <Filter className="w-4 h-4" />
-              <span>Filters</span>
-            </button>
-            <button className="text-gray-600 hover:text-gray-800">
-              Download all
-            </button>
+            </Link>
+            <div className="flex gap-3">
+              <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm flex-1 sm:flex-none">
+                <Filter className="w-4 h-4" />
+                <span>Filters</span>
+              </button>
+              <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm flex-1 sm:flex-none">
+                Download all
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Products Table */}
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gadgets</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost price</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Selling price</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pieces</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Availability</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gadgets</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost price</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Selling price</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pieces</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Availability</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {products.map((product, index) => (
-                <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-blue-600 hover:text-blue-800 cursor-pointer">{product.name}</span>
+                <Link
+                  key={index}
+                  href={`/dashboard/accounting/inventory/inventory-details`}
+                  className="table-row hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  <td className="px-3 md:px-6 py-4 whitespace-nowrap">
+                    <span className="text-blue-600 text-sm hover:text-blue-800 cursor-pointer">{product.name}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.costPrice}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.sellingPrice}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td className="px-3 md:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{product.costPrice}</td>
+                  <td className="px-3 md:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{product.sellingPrice}</td>
+                  <td className="px-3 md:px-6 py-4 whitespace-nowrap text-xs">
                     <span className={product.pieces.includes('-') ? 'text-red-600' : 'text-gray-900'}>
                       {product.pieces}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.branch}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td className="px-3 md:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{product.branch}</td>
+                  <td className="px-3 md:px-6 py-4 whitespace-nowrap text-xs">
                     <span className={product.availabilityColor}>
                       {product.availability}
                     </span>
                   </td>
-                </tr>
+                </Link>
               ))}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-          <button className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 md:px-6 py-4 border-t border-gray-200 gap-4">
+          <button className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 text-sm">
             Previous
           </button>
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-gray-600 text-center">
             Page 1 of 10
           </span>
-          <button className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50">
+          <button className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 text-sm">
             Next
           </button>
         </div>
