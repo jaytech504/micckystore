@@ -64,13 +64,6 @@ export default function AccountingDashboard() {
 
         {/* Right Controls */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-          {/* Download Report Button */}
-          <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 text-sm">
-            <Download className="h-4 w-4" />
-            Download Report
-          </button>
-
-          {/* Add Transaction Button */}
           <Link
             href="/dashboard/accounting/transaction/new-invoice"
             className="bg-[#E866B7] text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
@@ -78,6 +71,10 @@ export default function AccountingDashboard() {
             <Plus className="w-4 h-4" />
             New Invoice
           </Link>
+          <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 text-sm">
+            <Download className="h-4 w-4" />
+            Download Report
+          </button>
         </div>
       </div>
 

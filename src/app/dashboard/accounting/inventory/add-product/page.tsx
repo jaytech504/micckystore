@@ -223,7 +223,7 @@ const NewItemForm = () => {
                     type="text"
                     value="Tax 7.5% (Automated)"
                     readOnly
-                    className="w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                    className="w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50"
                   />
                 </div>
                 
