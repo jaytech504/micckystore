@@ -126,7 +126,7 @@ const VendorsDashboard = () => {
               onClick={() => setShowNewSupplierModal(true)}
               className="bg-[#E866B7] text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
             >
-              Add Product
+              Add Vendor
             </button>
             <button className="border border-gray-200 hover:bg-gray-50 px-3 py-2 text-gray-700 rounded-lg flex items-center gap-2 transition-colors">
               <Filter className="h-4 w-4" />
@@ -187,7 +187,7 @@ const VendorsDashboard = () => {
 
       {/* New Supplier Modal */}
       {showNewSupplierModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="p-4">

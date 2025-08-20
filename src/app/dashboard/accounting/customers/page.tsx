@@ -122,7 +122,7 @@ const AccountingDashboard = () => {
               onClick={() => setShowNewCustomerModal(true)}
               className="bg-[#FBB906] text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
             >
-              New Receipt
+              New Customer
             </button>
             <button className="border border-gray-200 hover:bg-gray-50 px-4 py-2 text-gray-700 rounded-lg flex items-center gap-2 transition-colors">
               <Filter className="h-4 w-4" />
