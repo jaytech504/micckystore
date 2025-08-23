@@ -38,6 +38,7 @@ interface SidebarLayoutProps {
 
 export default function SidebarLayout({ children }: SidebarLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
 
   // Check if we're on the messages page to show icon-only sidebar
@@ -70,13 +71,19 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
     setIsSidebarOpen(false);
   }, [pathname]);
 
-  // Close sidebar when resizing to desktop
+  // Handle resize and initial mobile check
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 1024) {
+      const isMobileView = window.innerWidth < 1024;
+      setIsMobile(isMobileView);
+      
+      if (!isMobileView) {
         setIsSidebarOpen(false);
       }
     };
+
+    // Initial check
+    handleResize();
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -249,7 +256,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
 
       {/* Main Content Area */}
       <div className={`flex-1 overflow-hidden ${isMessagesPage ? 'lg:ml-0' : 'lg:ml-0'}`}>
-        <main className={`h-full overflow-y-auto p-4 lg:p-8 ${window?.innerWidth < 1024 ? 'pt-20' : ''}`}>
+        <main className={`h-full overflow-y-auto p-4 lg:p-8 ${isMobile ? 'pt-20' : ''}`}>
           {children}
         </main>
       </div>
