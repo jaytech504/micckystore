@@ -78,17 +78,17 @@ export default function SalesLayout({ children }: SalesLayoutProps) {
 
   const mainNavigationItems: NavigationItem[] = [
     { name: 'Dashboard', href: '/dashboard/sales-rep', icon: LayoutDashboard },
-    { name: 'WhatsApp', href: '/sales/whatsapp', icon: WhatsAppIcon },
-    { name: 'Instagram', href: '/sales/instagram', icon: InstagramIcon },
-    { name: 'Facebook', href: '/sales/facebook', icon: FacebookIcon },
+    { name: 'WhatsApp', href: '/dashboard/sales-rep/whatsapp', icon: WhatsAppIcon },
+    { name: 'Instagram', href: '/dashboard/sales-rep/instagram', icon: InstagramIcon },
+    { name: 'Facebook', href: '/dashboard/sales-rep/facebook', icon: FacebookIcon },
   ]
 
   const otherItems: NavigationItem[] = [
-    { name: 'Tiktok', href: '/sales/tiktok', icon: TikTokIcon },
-    { name: 'Twitter', href: '/sales/twitter', icon: TwitterIcon },
-    { name: 'Calendar', href: '/sales/calendar', icon: Calendar },
-    { name: 'In-House Messages', href: '/sales/messages', icon: MessageCircle },
-    { name: 'Place Order', href: '/sales/place-order', icon: ShoppingCart },
+    { name: 'Tiktok', href: '/dashboard/sales-rep/tiktok', icon: TikTokIcon },
+    { name: 'Twitter', href: '/dashboard/sales-rep/twitter', icon: TwitterIcon },
+    { name: 'Calendar', href: '/dashboard/sales-rep/calendar', icon: Calendar },
+    { name: 'In-House Messages', href: '/dashboard/sales-rep/messaging', icon: MessageCircle },
+    { name: 'Place Order', href: '/dashboard/sales-rep/place-order', icon: ShoppingCart },
   ]
 
   const bottomItems: NavigationItem[] = [
@@ -121,8 +121,8 @@ export default function SalesLayout({ children }: SalesLayoutProps) {
   }, [])
 
   const isActive = (href: string) => {
-    if (href === '/sales' && pathname === '/sales') return true
-    if (href !== '/sales' && pathname.startsWith(href)) return true
+    if (href === '/dashboard/sales-rep' && pathname === '/dashboard/sales-rep') return true
+    if (href !== '/dashboard/sales-rep' && pathname.startsWith(href)) return true
     return false
   }
 
@@ -315,7 +315,7 @@ export default function SalesLayout({ children }: SalesLayoutProps) {
           </div>
         </div>
 
-        <main className={`flex-1 overflow-y-auto p-4 lg:p-7 ${isMobile ? 'pt-20' : ''} pb-8`}>
+        <main className={`flex-1 overflow-y-auto p-2 lg:p-2 ${isMobile ? 'pt-20' : ''} pb-8`}>
           {children}
         </main>
       </div>

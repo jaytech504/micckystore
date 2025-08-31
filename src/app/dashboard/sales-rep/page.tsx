@@ -12,7 +12,7 @@ import {
 
 export default function SalesDashboard() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div>
