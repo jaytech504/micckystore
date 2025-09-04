@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@netlify/next": "^1.4.9",
     "axios": "^1.11.0",
     "lucide-react": "^0.536.0",
