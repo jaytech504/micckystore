@@ -169,6 +169,7 @@ export default function NewSalesReceipt() {
       {/* Form */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         {/* Form Header */}
+        <h3 className="text-lg font-semibold text-gray-900 mb-6">New Sales Receipt</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* Left Column */}
           <div className="space-y-4">
