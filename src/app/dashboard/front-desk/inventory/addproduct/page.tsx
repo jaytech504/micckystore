@@ -71,50 +71,28 @@ const NewItemForm = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Transaction</h1>
-              <p className="text-gray-600 text-sm">Monitor all financial activities, revenue, expenses, and invoices.</p>
-            </div>
-            <div className="text-sm text-gray-500 mt-4 lg:mt-0">
-              Last Update: Current date and time
-            </div>
+      <div className="mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-4 gap-4">
+          <div className="flex-1">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Hello Chineye</h2>
+            <p className="text-gray-600 text-sm">Monitor all sales, repairs, and orders.</p>
           </div>
-        </div>
-
-        {/* Controls */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          {/* Search */}
-          <div className="relative w-full sm:flex-1 sm:max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-900 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search"
-              className="w-full pl-10 pr-16 py-2.5 text-black border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent"
-            />
-            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-medium">
-              ⌘ K
-            </span>
-          </div>
-
-          {/* Right Controls */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
             <Link
-              href="/dashboard/accounting/transaction/new-invoice"
-              className="bg-[#E866B7] text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
-            >
-              <Plus className="w-4 h-4" />
-              New Invoice
-            </Link>
-            <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 text-sm">
-              <Download className="h-4 w-4" />
-              Download Report
-            </button>
-
-            
+            href="/dashboard/front-desk/sales"
+            className="bg-[#E866B7] text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+          >
+            <Plus className="w-4 h-4" />
+            New Reciept
+          </Link>
+          <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 text-sm">
+            <Download className="h-4 w-4" />
+            Download Report
+          </button>
           </div>
         </div>
+
+      </div>
       {/* Main Content */}
       <div className="space-y-6">
         

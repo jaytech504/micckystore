@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useState } from 'react';
-import { Calendar, ChevronDown, X } from 'lucide-react';
+import { Calendar, ChevronDown, X, Download, Plus } from 'lucide-react';
 
 interface RepairLog {
   ticketId: string;
@@ -19,25 +20,10 @@ interface RepairLog {
   diagnosis?: string;
 }
 
-interface AuditLog {
-  time: string;
-  assigned: string;
-  received: string;
-  date: string;
-  lastUpdated: string;
-  edited: string;
-}
-
-interface EngineerStats {
-  engineer: string;
-  repairsDone: number;
-  avgTime: string;
-}
 
 const RepairTrackingPage = () => {
   const [selectedTicket, setSelectedTicket] = useState<RepairLog | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [selectBranch, setSelectBranch] = useState("All Branches");
 
   const repairLogs: RepairLog[] = [
     {
@@ -117,45 +103,8 @@ const RepairTrackingPage = () => {
     }
   ];
 
-  const auditLogs: AuditLog[] = [
-    {
-      time: '09:45',
-      assigned: 'Chineye',
-      received: 'Semiu',
-      date: '24/04/25',
-      lastUpdated: '26/04/25',
-      edited: 'Nifemi'
-    },
-    {
-      time: '09:45',
-      assigned: 'Chineye',
-      received: 'Semiu',
-      date: '24/04/25',
-      lastUpdated: '26/04/25',
-      edited: 'Nil'
-    },
-    {
-      time: '09:45',
-      assigned: 'Dennis',
-      received: 'Damola',
-      date: '24/04/25',
-      lastUpdated: '26/04/25',
-      edited: 'Dennis'
-    },
-    {
-      time: '09:45',
-      assigned: 'Dennis',
-      received: 'Osas',
-      date: '24/04/25',
-      lastUpdated: '26/04/25',
-      edited: 'Nil'
-    }
-  ];
 
-  const engineerStats: EngineerStats[] = [
-    { engineer: 'Semiu', repairsDone: 46, avgTime: '1d 22h' },
-    { engineer: 'Osas', repairsDone: 40, avgTime: '2d 4h' }
-  ];
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -183,26 +132,27 @@ const RepairTrackingPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">All Repair Logs</h1>
-            <p className="text-gray-500">Repair tracking</p>
+      <div className="mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-4 gap-4">
+          <div className="flex-1">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Hello Chineye</h2>
+            <p className="text-gray-600 text-sm">Monitor all sales, repairs, and orders.</p>
           </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600">Branch:</span>
-            <select
-              value={selectBranch}
-              onChange={(e) => setSelectBranch(e.target.value)}
-              className="border rounded px-3 py-1.5 text-sm bg-white text-[#FBB906]"
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+            <Link
+              href="/dashboard/front-desk/repairs/new-repair"
+              className="bg-[#E866B7] text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
             >
-              <option>All Branches</option>
-              <option>Gbagada</option>
-              <option>Ikeja</option>
-              <option>Lekki</option>
-            </select>
+              <Plus className="w-4 h-4" />
+              New Repair
+            </Link>
+          <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 text-sm">
+            <Download className="h-4 w-4" />
+            Download Report
+          </button>
           </div>
         </div>
+
       </div>
 
       {/* Filters */}
@@ -263,113 +213,6 @@ const RepairTrackingPage = () => {
               ))}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Bottom Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Audit Logs */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="font-medium text-gray-900">Audit Logs</h3>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-600">24 Apr 2025</span>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Received</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Updated</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Edited</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {auditLogs.map((log, index) => (
-                    <tr key={index}>
-                      <td className="px-4 py-3 text-xs text-gray-900">{log.time}</td>
-                      <td className="px-4 py-3 text-xs text-gray-900">{log.assigned}</td>
-                      <td className="px-4 py-3 text-xs text-gray-900">{log.received}</td>
-                      <td className="px-4 py-3 text-xs text-gray-900">{log.date}</td>
-                      <td className="px-4 py-3 text-xs text-gray-900">{log.lastUpdated}</td>
-                      <td className="px-4 py-3 text-xs text-gray-900">{log.edited}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        {/* Repair Insights */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow-sm border p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium text-gray-900">Repair insights</h3>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-600">24 Apr 2025</span>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm text-gray-600">Average Completion time.</span>
-                  <span className="text-sm font-medium text-gray-900">2 days 4 hours</span>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm text-gray-600">Repairs completed</span>
-                  <span className="text-sm font-medium text-gray-900">164</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium text-gray-900">Top 2 Engineers</h3>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-600">Monthly</span>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Engineer</span>
-                <div className="flex gap-8">
-                  <span className="text-sm text-gray-600">Repairs done</span>
-                  <span className="text-sm text-gray-600">Avg Time</span>
-                </div>
-              </div>
-              {engineerStats.map((stat, index) => (
-                <div key={index} className="flex justify-between items-center">
-                  <span className="text-sm text-gray-900">{stat.engineer}</span>
-                  <div className="flex gap-12">
-                    <span className="text-sm text-gray-900">{stat.repairsDone}</span>
-                    <span className="text-sm text-gray-900">{stat.avgTime}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Delay Alert */}
-      <div className="mt-6 bg-white rounded-lg shadow-sm border border-red-200 p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-red-600 font-medium">Delay Alerts</span>
-          <div className="bg-red-50 border border-red-200 rounded-full px-4 py-2">
-            <span className="text-red-600 text-sm font-medium">7 tickets exceeded due date</span>
-          </div>
         </div>
       </div>
 

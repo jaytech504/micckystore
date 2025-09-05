@@ -50,7 +50,7 @@ export default function SalesLayout({ children }: SalesLayoutProps) {
 
   const otherItems: NavigationItem[] = [
     { name: 'Stock Transfer', href: '/dashboard/front-desk/stock-transfer', icon: Chain },
-    { name: 'Repair', href: '/dashboard/front-desk/repair', icon: Wrench },
+    { name: 'Repair', href: '/dashboard/front-desk/repairs', icon: Wrench },
     { name: 'Calendar', href: '/dashboard/front-desk/calendar', icon: Calendar },
     { name: 'Messages', href: '/dashboard/front-desk/messaging', icon: MessageCircle },
   ]

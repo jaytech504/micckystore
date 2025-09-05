@@ -1,7 +1,8 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Plus, Download, Target, Eye, MessageSquare, ShoppingCart, FileText, Receipt, Send } from 'lucide-react';
+import { Plus, Download, Target, Eye, MessageSquare, ShoppingCart, FileText, Receipt, Send, Phone } from 'lucide-react';
+import { DevicePhoneMobileIcon } from '@heroicons/react/16/solid';
 
 type Activity = {
   id: number;
@@ -140,9 +141,9 @@ export default function DashboardMain(): React.ReactElement {
     },
     {
       id: 3,
-      product: 'Samsung S24 Screen',
-      orderId: 'ORD-1002',
-      customer: 'Jane Smith',
+      product: 'Itel S24 Screen',
+      orderId: 'ORD-1003',
+      customer: 'Jane Doe',
       source: 'Online',
       amount: '₦40,000',
       status: 'cancelled',
@@ -172,7 +173,7 @@ export default function DashboardMain(): React.ReactElement {
     return (
       <select defaultValue={status} className="border border-gray-200 rounded px-3 py-2 text-sm">
         <option value="pending">Pending</option>
-        <option value="processing">Approved</option>
+        <option value="approved">Approved</option>
         <option value="shipped">Delivered</option>
         <option value="completed">Ready</option>
         <option value="cancelled">Cancelled</option>
@@ -382,14 +383,14 @@ export default function DashboardMain(): React.ReactElement {
               <table className="w-full">
                 <tbody>
                   {orders.map((order) => (
-                    <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="p-6">
+                    <tr key={order.id} className="border-b border-gray-100 transition-colors">
+                      <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <input type="checkbox" className="w-4 h-4 text-pink-400 border-gray-300 rounded focus:ring-pink-400" />
+                          <DevicePhoneMobileIcon className="w-8 h-8 text-gray-400" />
                           <div>
                             <p className="font-medium text-sm text-gray-900">{order.product}</p>
                             <p className="text-sm text-gray-500">{order.orderId}</p>
-                            <div className="p-4 space-y-2">
+                            <div className="p-1">
                                 <div key={`badges-${order.id}`} className="flex gap-2 pl-16">
                                   {order.badges.map((badge, index) => (
                                     <span key={index} className={getStatusBadge(badge)}>
@@ -416,10 +417,14 @@ export default function DashboardMain(): React.ReactElement {
                         </div>
                       </td>
                       <td className="p-6 text-gray-700">
-                        {getStatusDropdown(order.status)}
+                        <div className='hover:bg-gray-50'>
+                          {getStatusDropdown(order.status)}
+                        </div>
                       </td>
                       <td className="p-6">
-                        {getActionButton(order.action, order.status)}
+                        <div className='hover:bg-gray-50'>
+                          {getActionButton(order.action, order.status)}
+                        </div>
                       </td>
                     </tr>
                   ))}
