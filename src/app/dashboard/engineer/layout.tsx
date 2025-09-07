@@ -44,8 +44,8 @@ export default function SalesLayout({ children }: SalesLayoutProps) {
 
   const mainNavigationItems: NavigationItem[] = [
     { name: 'Dashboard', href: '/dashboard/engineer', icon: LayoutDashboard },
-    { name: 'Sales', href: '/dashboard/engineer/repairs', icon: ChartNoAxesCombined },
-    { name: 'Inventory', href: '/dashboard/engineer/parts', icon: Calculator },
+    { name: 'My Repairs', href: '/dashboard/engineer/repairs', icon: ChartNoAxesCombined },
+    { name: 'Parts Requests', href: '/dashboard/engineer/parts', icon: Calculator },
   ]
 
   const otherItems: NavigationItem[] = [
@@ -83,8 +83,8 @@ export default function SalesLayout({ children }: SalesLayoutProps) {
   }, [])
 
   const isActive = (href: string) => {
-    if (href === '/dashboard/front-desk' && pathname === '/dashboard/front-desk') return true
-    if (href !== '/dashboard/front-desk' && pathname.startsWith(href)) return true
+    if (href === '/dashboard/engineer' && pathname === '/dashboard/engineer') return true
+    if (href !== '/dashboard/engineer' && pathname.startsWith(href)) return true
     return false
   }
 
