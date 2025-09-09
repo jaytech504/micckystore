@@ -87,7 +87,10 @@ const LoginPage = () => {
           dashboardPath = '/dashboard/front-desk';
           break;
         case 'Online Sales Person':
-          dashboardPath = '/dashboard/online-sales';
+          dashboardPath = '/dashboard/sales-rep';
+          break;
+        case 'Engineer':
+          dashboardPath = '/dashboard/engineer';
           break;
         default:
           dashboardPath = '/dashboard';
