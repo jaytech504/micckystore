@@ -1,176 +1,125 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Calendar, ChevronDown, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, ChevronDown, X, Loader2 } from 'lucide-react';
+import { useRepairs, useRepairStats, useRepairActivityLogs } from '../hooks/useRepairs';
+import { useAuth } from '../../../../hooks/useAuth';
+import ProtectedRoute from '../../../../components/ProtectedRoute';
+import { branchesApi } from '../../../../api/branchesApi';
 
-interface RepairLog {
-  ticketId: string;
-  device: string;
-  issue: string;
-  branch: string;
-  engineerAssigned: string;
-  tagDate: string;
-  dueDate: string;
-  status: 'In Progress' | 'Completed' | 'Returned';
-  customerName?: string;
-  phoneNumber?: string;
-  serialIMEI?: string;
-  expectedCompletionDate?: string;
-  diagnosis?: string;
-}
-
-interface AuditLog {
-  time: string;
-  assigned: string;
-  received: string;
-  date: string;
-  lastUpdated: string;
-  edited: string;
-}
-
-interface EngineerStats {
-  engineer: string;
-  repairsDone: number;
-  avgTime: string;
+interface Branch {
+  _id: string;
+  name: string;
+  address: string;
+  state: string;
+  country: string;
+  zipCode?: string;
 }
 
 const RepairTrackingPage = () => {
-  const [selectedTicket, setSelectedTicket] = useState<RepairLog | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
   const [selectBranch, setSelectBranch] = useState("All Branches");
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branchesLoading, setBranchesLoading] = useState(false);
+  const [branchesError, setBranchesError] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [engineerFilter, setEngineerFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
 
-  const repairLogs: RepairLog[] = [
-    {
-      ticketId: 'MSR-8249001',
-      device: 'iPhone 13pro 64gb',
-      issue: 'Not turning on',
-      branch: 'Ikeja',
-      engineerAssigned: 'Semiu',
-      tagDate: '24/04/2025',
-      dueDate: '29/04/2025',
-      status: 'In Progress',
-      customerName: 'Testify Olokor',
-      phoneNumber: '0802 063 1277',
-      serialIMEI: '843848428238',
-      expectedCompletionDate: '28/04/2025',
-      diagnosis: 'Not responding'
-    },
-    {
-      ticketId: 'MSR-8249001',
-      device: 'iPhone 13pro',
-      issue: 'Not turning on',
-      branch: 'Ikeja',
-      engineerAssigned: 'Osas',
-      tagDate: '24/04/2025',
-      dueDate: '29/04/2025',
-      status: 'Completed'
-    },
-    {
-      ticketId: 'MSR-8249001',
-      device: 'iPhone 13pro',
-      issue: 'Not turning on',
-      branch: 'Ikeja',
-      engineerAssigned: 'Semiu',
-      tagDate: '24/04/2025',
-      dueDate: '29/04/2025',
-      status: 'In Progress'
-    },
-    {
-      ticketId: 'MSR-8249001',
-      device: 'iPhone 13pro',
-      issue: 'Not turning on',
-      branch: 'Ikeja',
-      engineerAssigned: 'Semiu',
-      tagDate: '24/04/2025',
-      dueDate: '29/04/2025',
-      status: 'Completed'
-    },
-    {
-      ticketId: 'MSR-8249001',
-      device: 'iPhone 13pro',
-      issue: 'Not turning on',
-      branch: 'Ikeja',
-      engineerAssigned: 'Semiu',
-      tagDate: '24/04/2025',
-      dueDate: '29/04/2025',
-      status: 'Returned'
-    },
-    {
-      ticketId: 'MSR-8249001',
-      device: 'iPhone 13pro',
-      issue: 'Not turning on',
-      branch: 'Ikeja',
-      engineerAssigned: 'Semiu',
-      tagDate: '24/04/2025',
-      dueDate: '29/04/2025',
-      status: 'Completed'
-    },
-    {
-      ticketId: 'MSR-8249001',
-      device: 'iPhone 13pro',
-      issue: 'Not turning on',
-      branch: 'Ikeja',
-      engineerAssigned: 'Semiu',
-      tagDate: '24/04/2025',
-      dueDate: '29/04/2025',
-      status: 'In Progress'
+  // Get current user
+  const { user, isLoading: userLoading } = useAuth();
+
+  // Fetch repairs with filters
+  const { 
+    repairs, 
+    loading: repairsLoading, 
+    error: repairsError,
+    pagination: repairsPagination 
+  } = useRepairs({
+    status: statusFilter as any || undefined,
+    assignedEngineer: engineerFilter || undefined,
+    start_date: dateFilter || undefined,
+    limit: 50
+  });
+
+  // Fetch repair statistics
+  const { 
+    stats: repairStats, 
+    loading: statsLoading, 
+    error: statsError 
+  } = useRepairStats({
+    start_date: dateFilter || undefined
+  });
+
+  // Fetch activity logs for selected ticket
+  const { 
+    activityLogs, 
+    loading: activityLogsLoading, 
+    error: activityLogsError 
+  } = useRepairActivityLogs(selectedTicket?._id || '');
+
+  // Fetch branches
+  const fetchBranches = async () => {
+    try {
+      setBranchesLoading(true);
+      setBranchesError('');
+      const response = await branchesApi.getBranches();
+      if (response.data && response.data.branches) {
+        setBranches(response.data.branches);
+      } else {
+        setBranchesError('No branches data received');
+      }
+    } catch (error: any) {
+      setBranchesError(error.message || 'Failed to fetch branches');
+    } finally {
+      setBranchesLoading(false);
     }
-  ];
+  };
 
-  const auditLogs: AuditLog[] = [
-    {
-      time: '09:45',
-      assigned: 'Chineye',
-      received: 'Semiu',
-      date: '24/04/25',
-      lastUpdated: '26/04/25',
-      edited: 'Nifemi'
-    },
-    {
-      time: '09:45',
-      assigned: 'Chineye',
-      received: 'Semiu',
-      date: '24/04/25',
-      lastUpdated: '26/04/25',
-      edited: 'Nil'
-    },
-    {
-      time: '09:45',
-      assigned: 'Dennis',
-      received: 'Damola',
-      date: '24/04/25',
-      lastUpdated: '26/04/25',
-      edited: 'Dennis'
-    },
-    {
-      time: '09:45',
-      assigned: 'Dennis',
-      received: 'Osas',
-      date: '24/04/25',
-      lastUpdated: '26/04/25',
-      edited: 'Nil'
-    }
-  ];
+  useEffect(() => {
+    fetchBranches();
+  }, []);
 
-  const engineerStats: EngineerStats[] = [
-    { engineer: 'Semiu', repairsDone: 46, avgTime: '1d 22h' },
-    { engineer: 'Osas', repairsDone: 40, avgTime: '2d 4h' }
-  ];
+  // Helper functions
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit'
+    });
+  };
+
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'In Progress':
+      case 'Pending':
+        return 'bg-yellow-100 text-yellow-600 border border-yellow-200';
+      case 'In progress':
         return 'bg-orange-100 text-orange-600 border border-orange-200';
+      case 'Repaired':
+        return 'bg-blue-100 text-blue-600 border border-blue-200';
+      case 'Repaired and sent back':
+        return 'bg-purple-100 text-purple-600 border border-purple-200';
       case 'Completed':
         return 'bg-green-100 text-green-600 border border-green-200';
-      case 'Returned':
-        return 'bg-red-100 text-red-600 border border-red-200';
+      case 'Completed and ready for pick up':
+        return 'bg-green-100 text-green-600 border border-green-200';
       default:
         return 'bg-gray-100 text-gray-600 border border-gray-200';
     }
   };
 
-  const handleTicketClick = (ticket: RepairLog) => {
+  const handleTicketClick = (ticket: any) => {
     setSelectedTicket(ticket);
     setShowModal(true);
   };
@@ -181,12 +130,19 @@ const RepairTrackingPage = () => {
   };
 
   return (
+    <ProtectedRoute requiredRoles={['admin', 'Super Admin']}>
     <div className="space-y-6">
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">All Repair Logs</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              {userLoading ? (
+                <div className="animate-pulse bg-gray-200 h-8 w-48 rounded"></div>
+              ) : (
+                `All Repair Logs`
+              )}
+            </h1>
             <p className="text-gray-500">Repair tracking</p>
           </div>
           <div className="flex items-center space-x-2">
@@ -195,12 +151,16 @@ const RepairTrackingPage = () => {
               value={selectBranch}
               onChange={(e) => setSelectBranch(e.target.value)}
               className="border rounded px-3 py-1.5 text-sm bg-white text-[#FBB906]"
+              disabled={branchesLoading}
             >
               <option>All Branches</option>
-              <option>Gbagada</option>
-              <option>Ikeja</option>
-              <option>Lekki</option>
+              {branches.map((branch) => (
+                <option key={branch._id} value={branch.name}>
+                  {branch.name}
+                </option>
+              ))}
             </select>
+            {branchesLoading && <Loader2 className="w-4 h-4 animate-spin" />}
           </div>
         </div>
       </div>
@@ -209,19 +169,42 @@ const RepairTrackingPage = () => {
       <div className="bg-white rounded-lg shadow-sm border mb-6">
         <div className="p-4 border-b">
           <div className="flex items-center justify-between">
-            <h2 className="font-medium text-gray-900">All Repair logs</h2>
+            <h2 className="font-medium text-gray-900">
+              All Repair logs ({repairsPagination.total_items || 0})
+            </h2>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-600">Date</span>
+                <input
+                  type="date"
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="text-sm text-gray-600 border border-gray-300 rounded px-2 py-1"
+                />
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-600">Status</span>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="text-sm text-gray-600 border border-gray-300 rounded px-2 py-1"
+                >
+                  <option value="">All Status</option>
+                  <option value="Pending">Pending</option>
+                  <option value="In progress">In Progress</option>
+                  <option value="Repaired">Repaired</option>
+                  <option value="Repaired and sent back">Repaired and sent back</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Completed and ready for pick up">Ready for Pickup</option>
+                </select>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-600">Engineer</span>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Engineer name"
+                  value={engineerFilter}
+                  onChange={(e) => setEngineerFilter(e.target.value)}
+                  className="text-sm text-gray-600 border border-gray-300 rounded px-2 py-1"
+                />
               </div>
             </div>
           </div>
@@ -243,135 +226,245 @@ const RepairTrackingPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {repairLogs.map((log, index) => (
-                <tr key={index} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleTicketClick(log)}>
-                  <td className="px-4 py-4">
-                    <span className="text-blue-600 text-xs font-medium">{log.ticketId}</span>
-                  </td>
-                  <td className="px-4 py-4 text-xs text-gray-900">{log.device}</td>
-                  <td className="px-4 py-4 text-xs text-gray-900">{log.issue}</td>
-                  <td className="px-4 py-4 text-xs text-gray-900">{log.branch}</td>
-                  <td className="px-4 py-4 text-xs text-gray-900">{log.engineerAssigned}</td>
-                  <td className="px-4 py-4 text-xs text-gray-900">{log.tagDate}</td>
-                  <td className="px-4 py-4 text-xs text-gray-900">{log.dueDate}</td>
-                  <td className="px-4 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(log.status)}`}>
-                      {log.status}
-                    </span>
+              {repairsLoading ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center">
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                      <span className="text-gray-600">Loading repairs...</span>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              ) : repairsError ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-red-600">
+                    Error: {repairsError}
+                  </td>
+                </tr>
+              ) : repairs.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                    No repairs found
+                  </td>
+                </tr>
+              ) : (
+                repairs.map((repair, index) => (
+                  <tr key={repair._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleTicketClick(repair)}>
+                    <td className="px-4 py-4">
+                      <span className="text-blue-600 text-xs font-medium">{repair.ticketId}</span>
+                    </td>
+                    <td className="px-4 py-4 text-xs text-gray-900">{repair.device}</td>
+                    <td className="px-4 py-4 text-xs text-gray-900">{repair.issueReported}</td>
+                    <td className="px-4 py-4 text-xs text-gray-900">{selectBranch}</td>
+                    <td className="px-4 py-4 text-xs text-gray-900">
+                      {repair.assignedEngineer ? `${repair.assignedEngineer.firstName} ${repair.assignedEngineer.lastName}` : 'Unassigned'}
+                    </td>
+                    <td className="px-4 py-4 text-xs text-gray-900">{formatDate(repair.createdAt)}</td>
+                    <td className="px-4 py-4 text-xs text-gray-900">
+                      {repair.expectedCompletionDate ? formatDate(repair.expectedCompletionDate) : 'N/A'}
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(repair.status)}`}>
+                        {repair.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Bottom Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Audit Logs */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="font-medium text-gray-900">Audit Logs</h3>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-600">24 Apr 2025</span>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Received</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Updated</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Edited</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {auditLogs.map((log, index) => (
-                    <tr key={index}>
-                      <td className="px-4 py-3 text-xs text-gray-900">{log.time}</td>
-                      <td className="px-4 py-3 text-xs text-gray-900">{log.assigned}</td>
-                      <td className="px-4 py-3 text-xs text-gray-900">{log.received}</td>
-                      <td className="px-4 py-3 text-xs text-gray-900">{log.date}</td>
-                      <td className="px-4 py-3 text-xs text-gray-900">{log.lastUpdated}</td>
-                      <td className="px-4 py-3 text-xs text-gray-900">{log.edited}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      {/* Activity Logs - Full Width */}
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="p-4 border-b flex items-center justify-between">
+          <h3 className="font-medium text-gray-900">Activity Logs</h3>
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-gray-600">
+              {selectedTicket ? formatDate(selectedTicket.createdAt) : 'Select a repair'}
+            </span>
+            <ChevronDown className="w-4 h-4 text-gray-400" />
           </div>
         </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Performed By</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {activityLogsLoading ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center">
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      <span className="text-gray-600">Loading activity logs...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : activityLogsError ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-red-600">
+                    Error: {activityLogsError}
+                  </td>
+                </tr>
+              ) : activityLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                    {selectedTicket ? 'No activity logs found' : 'Select a repair to view activity logs'}
+                  </td>
+                </tr>
+              ) : (
+                activityLogs.map((log, index) => (
+                  <tr key={index}>
+                    <td className="px-4 py-3 text-xs text-gray-900">{formatDateTime(log.timestamp)}</td>
+                    <td className="px-4 py-3 text-xs text-gray-900 capitalize">{log.action.replace('_', ' ')}</td>
+                    <td className="px-4 py-3 text-xs text-gray-900">{log.description}</td>
+                    <td className="px-4 py-3 text-xs text-gray-900">
+                      {log.performedBy ? `${log.performedBy.firstName} ${log.performedBy.lastName}` : 'System'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        </div>
 
+        {/* Repair Insights and Top Engineers - 50/50 Layout */}
+      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"> */}
         {/* Repair Insights */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow-sm border p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium text-gray-900">Repair insights</h3>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-600">24 Apr 2025</span>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm text-gray-600">Average Completion time.</span>
-                  <span className="text-sm font-medium text-gray-900">2 days 4 hours</span>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm text-gray-600">Repairs completed</span>
-                  <span className="text-sm font-medium text-gray-900">164</span>
-                </div>
-              </div>
+        {/* <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-medium text-gray-900">Repair insights</h3>
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-gray-600">
+                {dateFilter ? formatDate(dateFilter) : 'All Time'}
+              </span>
+              <ChevronDown className="w-4 h-4 text-gray-400" />
             </div>
           </div>
+          <div className="space-y-4">
+            {statsLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                <span className="text-gray-600">Loading stats...</span>
+              </div>
+            ) : statsError ? (
+              <div className="text-center text-red-600 py-4">
+                Error: {statsError}
+              </div>
+            ) : (
+              <>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm text-gray-600">Average Completion time</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {repairStats?.averageCompletionTime || 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm text-gray-600">Repairs completed</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {repairStats?.completedRepairs || 0}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm text-gray-600">Total repairs</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {repairStats?.totalRepairs || 0}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm text-gray-600">Overdue repairs</span>
+                    <span className="text-sm font-medium text-red-600">
+                      {repairStats?.overdueRepairs || 0}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div> */}
 
-          <div className="bg-white rounded-lg shadow-sm border p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium text-gray-900">Top 2 Engineers</h3>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-600">Monthly</span>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+        {/* Top Engineers */}
+        {/* <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-medium text-gray-900">Top Engineers</h3>
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-gray-600">
+                {dateFilter ? formatDate(dateFilter) : 'All Time'}
+              </span>
+              <ChevronDown className="w-4 h-4 text-gray-400" />
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Engineer</span>
+              <div className="flex gap-8">
+                <span className="text-sm text-gray-600">Repairs done</span>
+                <span className="text-sm text-gray-600">Avg Time</span>
               </div>
             </div>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Engineer</span>
-                <div className="flex gap-8">
-                  <span className="text-sm text-gray-600">Repairs done</span>
-                  <span className="text-sm text-gray-600">Avg Time</span>
-                </div>
+            {statsLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                <span className="text-gray-600">Loading engineer stats...</span>
               </div>
-              {engineerStats.map((stat, index) => (
+            ) : statsError ? (
+              <div className="text-center text-red-600 py-4">
+                Error: {statsError}
+              </div>
+            ) : repairStats?.engineerStats && repairStats.engineerStats.length > 0 ? (
+              repairStats.engineerStats.slice(0, 5).map((stat: any, index: number) => (
                 <div key={index} className="flex justify-between items-center">
-                  <span className="text-sm text-gray-900">{stat.engineer}</span>
+                  <span className="text-sm text-gray-900">{stat.engineerName}</span>
                   <div className="flex gap-12">
                     <span className="text-sm text-gray-900">{stat.repairsDone}</span>
                     <span className="text-sm text-gray-900">{stat.avgTime}</span>
                   </div>
                 </div>
-              ))}
-            </div>
+              ))
+            ) : (
+              <div className="text-center text-gray-500 py-4">
+                No engineer data available
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Delay Alert */}
-      <div className="mt-6 bg-white rounded-lg shadow-sm border border-red-200 p-4">
+      {/* <div className="mt-6 bg-white rounded-lg shadow-sm border border-red-200 p-4">
         <div className="flex items-center justify-between">
           <span className="text-red-600 font-medium">Delay Alerts</span>
           <div className="bg-red-50 border border-red-200 rounded-full px-4 py-2">
-            <span className="text-red-600 text-sm font-medium">7 tickets exceeded due date</span>
+            <span className="text-red-600 text-sm font-medium">
+              {statsLoading ? (
+                <div className="flex items-center">
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Loading...
+                </div>
+              ) : statsError ? (
+                'Error loading alerts'
+              ) : (
+                `${repairStats?.overdueRepairs || 0} tickets exceeded due date`
+              )}
+            </span>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Modal */}
       {showModal && selectedTicket && (
@@ -399,7 +492,12 @@ const RepairTrackingPage = () => {
               
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Phone Number:</label>
-                <span className="text-sm text-gray-900">{selectedTicket.phoneNumber || 'N/A'}</span>
+                <span className="text-sm text-gray-900">{selectedTicket.customerPhoneNumber || 'N/A'}</span>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Email:</label>
+                <span className="text-sm text-gray-900">{selectedTicket.customerEmail || 'N/A'}</span>
               </div>
               
               <div>
@@ -409,17 +507,22 @@ const RepairTrackingPage = () => {
               
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Serial/IMEI:</label>
-                <span className="text-sm text-gray-900">{selectedTicket.serialIMEI || 'N/A'}</span>
+                <span className="text-sm text-gray-900">{selectedTicket.imei || 'N/A'}</span>
               </div>
               
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Issue Logged:</label>
-                <span className="text-sm text-gray-900">{selectedTicket.issue}</span>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Issue Reported:</label>
+                <span className="text-sm text-gray-900">{selectedTicket.issueReported}</span>
               </div>
               
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Assigned Engineer:</label>
-                <span className="text-sm text-gray-900">{selectedTicket.engineerAssigned}</span>
+                <span className="text-sm text-gray-900">
+                  {selectedTicket.assignedEngineer ? 
+                    `${selectedTicket.assignedEngineer.firstName} ${selectedTicket.assignedEngineer.lastName}` : 
+                    'Unassigned'
+                  }
+                </span>
               </div>
               
               <div>
@@ -430,13 +533,25 @@ const RepairTrackingPage = () => {
               </div>
               
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Date Tagged:</label>
-                <span className="text-sm text-gray-900">{selectedTicket.tagDate}</span>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Priority Level:</label>
+                <span className="text-sm text-gray-900">{selectedTicket.priorityLevel || 'N/A'}</span>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Date Created:</label>
+                <span className="text-sm text-gray-900">{formatDate(selectedTicket.createdAt)}</span>
               </div>
               
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Expected Completion Date:</label>
-                <span className="text-sm text-gray-900">{selectedTicket.expectedCompletionDate || 'N/A'}</span>
+                <span className="text-sm text-gray-900">
+                  {selectedTicket.expectedCompletionDate ? formatDate(selectedTicket.expectedCompletionDate) : 'N/A'}
+                </span>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Price:</label>
+                <span className="text-sm text-gray-900">{selectedTicket.price || 'N/A'}</span>
               </div>
               
               <div>
@@ -450,6 +565,7 @@ const RepairTrackingPage = () => {
         </div>
       )}
     </div>
+    </ProtectedRoute>
   );
 };
 

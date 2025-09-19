@@ -2,74 +2,155 @@
 
 import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
-import { Search,ChevronDown, Download, Plus, ArrowUpRight, TrendingUp, TrendingDown, ShoppingBag, Users, Package } from 'lucide-react';
+import { Search,ChevronDown, Download, Plus, ArrowUpRight, TrendingUp, TrendingDown, ShoppingBag, Users, Package, Loader2, AlertCircle, X } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, BarChart, Bar, Legend, ResponsiveContainer } from 'recharts';
+import ProtectedRoute from '../../../components/ProtectedRoute';
+import { useFinancialAnalytics } from '../../../hooks/useFinancialAnalytics';
+import { useBranches } from '../../../hooks/useBranches';
+import { useInvoiceAnalytics } from '../../../hooks/useInvoiceAnalytics';
+import { useSalesAnalytics } from '../../../hooks/useSalesAnalytics';
+import { useDailyRevenueAnalytics } from '../../../hooks/useDailyRevenueAnalytics';
 
 
 
 
 const Dashboard = () => {
   const [mounted, setMounted] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState('Lekki');
+  const [selectedLocation, setSelectedLocation] = useState('All Branches');
+  const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
   const [locationOpen, setLocationOpen] = useState(false);
-  const locations: string[] = ['Lekki', 'Gbagada', 'Ikeja'];
+
+  // Use branches hook to fetch real branch data
+  const { branches, loading: branchesLoading, error: branchesError, clearError: clearBranchesError } = useBranches();
+
+  // Create branch options from API data
+  const branchOptions = [
+    { value: 'All Branches', label: 'All Branches' },
+    ...branches.map(branch => ({
+      value: branch._id,
+      label: branch.name
+    }))
+  ];
+
+  // Use financial analytics hook
+  const { data: financialData, loading: financialLoading, error: financialError, refetch, clearError } = useFinancialAnalytics({
+    branch: selectedLocation === 'All Branches' ? undefined : selectedLocation,
+    period: selectedPeriod
+  });
+
+  // Use invoice analytics hook
+  const { data: invoiceData, loading: invoiceLoading, error: invoiceError, clearError: clearInvoiceError } = useInvoiceAnalytics({
+    branch: selectedLocation === 'All Branches' ? undefined : selectedLocation
+  });
+
+  // Use sales analytics hook
+  const { todaySales, data: salesData, loading: salesLoading, error: salesError, clearError: clearSalesError } = useSalesAnalytics({
+    branch: selectedLocation === 'All Branches' ? undefined : selectedLocation
+  });
+
+  // Use daily revenue analytics hook for the Total Revenue chart
+  const { data: dailyRevenueData, loading: dailyRevenueLoading, error: dailyRevenueError, clearError: clearDailyRevenueError } = useDailyRevenueAnalytics({
+    branch: selectedLocation === 'All Branches' ? undefined : selectedLocation,
+    week: 'current' // Get current week's data
+  });
 
   // Ensure component is mounted before rendering charts
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Chart data for Income vs Expenses
-  const incomeExpensesData = [
-    { name: 'Jan 1', income: 35000, expenses: 28000 },
-    { name: 'Jan 5', income: 45000, expenses: 32000 },
-    { name: 'Jan 9', income: 42000, expenses: 38000 },
-    { name: 'Jan 13', income: 48000, expenses: 45000 },
-    { name: 'Jan 17', income: 52000, expenses: 48000 },
-    { name: 'Jan 21', income: 58000, expenses: 52000 },
-    { name: 'Jan 25', income: 48000, expenses: 45000 },
-    { name: 'Jan 29', income: 42000, expenses: 38000 },
-  ];
+  // Utility function to format currency
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
-  // Bar chart data for Total Revenue
-  const revenueData = [
-    { day: 'Monday', online: 12000, offline: 10000 },
-    { day: 'Tuesday', online: 15000, offline: 8000 },
-    { day: 'Wednesday', online: 5000, offline: 18000 },
-    { day: 'Thursday', online: 14000, offline: 6000 },
-    { day: 'Friday', online: 11000, offline: 9000 },
-    { day: 'Saturday', online: 16000, offline: 12000 },
-    { day: 'Sunday', online: 20000, offline: 8000 },
+  // Handle location change
+  const handleLocationChange = (location: string) => {
+    setSelectedLocation(location);
+    setLocationOpen(false);
+  };
+
+  // Chart data for Income vs Expenses - using API data
+  const incomeExpensesData = financialData ? [
+    { 
+      name: financialData.period.type.charAt(0).toUpperCase() + financialData.period.type.slice(1),
+      income: financialData.revenue.total,
+      expenses: financialData.expenses.total
+    }
+  ] : [];
+
+  // Bar chart data for Total Revenue - using real API data
+  const revenueData = dailyRevenueData?.dailyData?.map(item => ({
+    day: item.day,
+    online: item.online,
+    offline: item.offline,
+    total: item.total
+  })) || [
+    // Fallback data if API data is not available
+    { day: 'Monday', online: 0, offline: 0, total: 0 },
+    { day: 'Tuesday', online: 0, offline: 0, total: 0 },
+    { day: 'Wednesday', online: 0, offline: 0, total: 0 },
+    { day: 'Thursday', online: 0, offline: 0, total: 0 },
+    { day: 'Friday', online: 0, offline: 0, total: 0 },
+    { day: 'Saturday', online: 0, offline: 0, total: 0 },
+    { day: 'Sunday', online: 0, offline: 0, total: 0 },
   ];
 
   const LocationDropdown = () => (
     <div className="relative">
       <button
         onClick={() => setLocationOpen(!locationOpen)}
-        className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:border-gray-300 transition-colors"
+              disabled={branchesLoading}
+        className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:border-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <span className="text-sm text-gray-600">Location:</span>
-        <span className="text-sm text-amber-500 font-medium">{selectedLocation}</span>
+              {branchesLoading ? (
+                <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
+              ) : (
+        <span className="text-sm text-amber-500 font-medium">
+                  {branchOptions.find(option => option.value === selectedLocation)?.label || selectedLocation}
+        </span>
+              )}
         <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${locationOpen ? 'rotate-180' : ''}`} />
       </button>
-      {locationOpen && (
+            {locationOpen && !branchesLoading && (
         <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-full">
-          {locations.map((option) => (
+                {branchOptions.length > 1 ? (
+                  branchOptions.map((option) => (
             <button
-              key={option}
-              onClick={() => {
-                setSelectedLocation(option);
-                setLocationOpen(false);
-              }}
+              key={option.value}
+                      onClick={() => handleLocationChange(option.value)}
               className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg"
             >
-              {option}
+              {option.label}
             </button>
-          ))}
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-sm text-gray-500">
+                    No branches available
+                  </div>
+                )}
         </div>
       )}
     </div>
   );
+
+  // Show loading state for initial load
+  if (financialLoading && !financialData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#E866B7]" />
+          <p className="text-gray-600">Loading accounting dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 bg-gray-50">
@@ -106,65 +187,226 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Error Messages */}
+      {financialError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+            <div className="flex-1">
+              <p className="text-red-800 font-medium">Error Loading Financial Data</p>
+              <p className="text-red-600 text-sm">{financialError}</p>
+            </div>
+            <button
+              onClick={clearError}
+              className="text-red-500 hover:text-red-700"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {branchesError && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-orange-500 mr-2" />
+            <div className="flex-1">
+              <p className="text-orange-800 font-medium">Error Loading Branches</p>
+              <p className="text-orange-600 text-sm">{branchesError}</p>
+            </div>
+            <button
+              onClick={clearBranchesError}
+              className="text-orange-500 hover:text-orange-700"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {invoiceError && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-blue-500 mr-2" />
+            <div className="flex-1">
+              <p className="text-blue-800 font-medium">Error Loading Invoice Data</p>
+              <p className="text-blue-600 text-sm">{invoiceError}</p>
+            </div>
+            <button
+              onClick={clearInvoiceError}
+              className="text-blue-500 hover:text-blue-700"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {salesError && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-green-500 mr-2" />
+            <div className="flex-1">
+              <p className="text-green-800 font-medium">Error Loading Sales Data</p>
+              <p className="text-green-600 text-sm">{salesError}</p>
+            </div>
+            <button
+              onClick={clearSalesError}
+              className="text-green-500 hover:text-green-700"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {dailyRevenueError && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-purple-500 mr-2" />
+            <div className="flex-1">
+              <p className="text-purple-800 font-medium">Error Loading Revenue Chart Data</p>
+              <p className="text-purple-600 text-sm">{dailyRevenueError}</p>
+            </div>
+            <button
+              onClick={clearDailyRevenueError}
+              className="text-purple-500 hover:text-purple-700"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Total Revenue */}
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-gray-600">Total Revenue</span>
-            <select className="text-xs text-[#FBB906] bg-transparent border-none focus:ring-0">
-              <option>January</option>
+            <select 
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value as 'week' | 'month' | 'quarter' | 'year')}
+              className="text-xs text-[#FBB906] bg-transparent border-none focus:ring-0"
+            >
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+              <option value="quarter">Quarter</option>
+              <option value="year">Year</option>
             </select>
           </div>
-          <div className="text-xl font-bold text-gray-900 mb-2">₦3,250,000</div>
+          <div className="text-xl font-bold text-gray-900 mb-2">
+            {financialLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            ) : (
+              formatCurrency(financialData?.revenue?.total || 0)
+            )}
+          </div>
           <div className="flex items-center text-sm">
             <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-            <span className="text-green-500">1.8%</span>
-            <span className="text-gray-500 ml-1">than last month</span>
+            <span className="text-green-500">
+              {financialData?.revenue?.salesCount || 0} sales
+            </span>
           </div>
         </div>
 
+        {/* Invoice Revenue */}
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-600">Gadget price</span>
-            <select className="text-xs text-[#FBB906] bg-transparent border-none focus:ring-0">
-              <option>January</option>
+            <span className="text-xs text-gray-600">Invoice Revenue</span>
+            <select 
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value as 'week' | 'month' | 'quarter' | 'year')}
+              className="text-xs text-[#FBB906] bg-transparent border-none focus:ring-0"
+            >
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+              <option value="quarter">Quarter</option>
+              <option value="year">Year</option>
             </select>
           </div>
-          <div className="text-xl font-bold text-gray-900 mb-2">₦1,870,000</div>
+          <div className="text-xl font-bold text-gray-900 mb-2">
+            {financialLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            ) : (
+              formatCurrency(financialData?.revenue?.invoiceRevenue || 0)
+            )}
+          </div>
           <div className="flex items-center text-sm">
-            <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
-            <span className="text-red-500">4.3%</span>
-            <span className="text-gray-500 ml-1">from previous month</span>
+            <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
+            <span className="text-green-500">From invoices</span>
           </div>
         </div>
 
+        {/* Total Expenses */}
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-gray-600">Total Expenses</span>
-            <select className="text-xs text-[#FBB906] bg-transparent border-none focus:ring-0">
-              <option>January</option>
+            <select 
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value as 'week' | 'month' | 'quarter' | 'year')}
+              className="text-xs text-[#FBB906] bg-transparent border-none focus:ring-0"
+            >
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+              <option value="quarter">Quarter</option>
+              <option value="year">Year</option>
             </select>
           </div>
-          <div className="text-xl font-bold text-gray-900 mb-2">₦1,870,000</div>
+          <div className="text-xl font-bold text-gray-900 mb-2">
+            {financialLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            ) : (
+              formatCurrency(financialData?.expenses?.total || 0)
+            )}
+          </div>
           <div className="flex items-center text-sm">
             <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
-            <span className="text-red-500">4.3%</span>
-            <span className="text-gray-500 ml-1">from previous month</span>
+            <span className="text-red-500">
+              {financialData?.expenses?.vendorExpenses ? 
+                formatCurrency(financialData.expenses.vendorExpenses) : '0'} vendors
+            </span>
           </div>
         </div>
 
+        {/* Net Profit */}
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-gray-600">Net Profit</span>
-            <select className="text-xs text-[#FBB906] bg-transparent border-none focus:ring-0">
-              <option>January</option>
+            <select 
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value as 'week' | 'month' | 'quarter' | 'year')}
+              className="text-xs text-[#FBB906] bg-transparent border-none focus:ring-0"
+            >
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+              <option value="quarter">Quarter</option>
+              <option value="year">Year</option>
             </select>
           </div>
-          <div className="text-xl font-bold text-gray-900 mb-2">₦1,870,000</div>
+          <div className="text-xl font-bold text-gray-900 mb-2">
+            {financialLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            ) : (
+              formatCurrency(financialData?.profitLoss?.amount || 0)
+            )}
+          </div>
           <div className="flex items-center text-sm">
+            {financialData?.profitLoss?.isProfit ? (
+              <>
             <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-            <span className="text-green-500">1.8%</span>
-            <span className="text-gray-500 ml-1">than last month</span>
+                <span className="text-green-500">
+                  {financialData.profitLoss.margin?.toFixed(1)}% margin
+                </span>
+              </>
+            ) : (
+              <>
+                <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
+                <span className="text-red-500">
+                  {financialData?.profitLoss?.margin?.toFixed(1)}% loss
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -175,14 +417,32 @@ const Dashboard = () => {
         <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Income vs Expenses</h3>
-              <select className="px-3 py-1 border text-[#FBB906] border-gray-300 rounded-lg text-sm">
-               <option>Branch: Lekki</option>
-                <option>Branch: Gbagada</option>
-                <option>Branch: Ikeja</option>
+              <select 
+                className="px-3 py-1 border text-[#FBB906] border-gray-300 rounded-lg text-sm"
+                value={selectedLocation}
+                onChange={(e) => handleLocationChange(e.target.value)}
+                disabled={branchesLoading}
+              >
+                {branchesLoading ? (
+                  <option value="">Loading branches...</option>
+                ) : (
+                  branchOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                  ))
+                )}
               </select>
           </div>
           <div className="h-80">
-            {mounted ? (
+            {financialLoading ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#E866B7]" />
+                  <p className="text-gray-600">Loading financial data...</p>
+                </div>
+              </div>
+            ) : mounted && incomeExpensesData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={incomeExpensesData}>
                   <XAxis 
@@ -195,22 +455,22 @@ const Dashboard = () => {
                     axisLine={false} 
                     tickLine={false}
                     tick={{ fontSize: 12, fill: '#9CA3AF' }}
-                    tickFormatter={(value) => `${value/1000}k`}
+                    tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`}
                   />
                   <Line 
                     type="monotone" 
                     dataKey="income" 
                     stroke="#E866B7" 
                     strokeWidth={3} 
-                    dot={false}
-                    name="Income"
+                    dot={true}
+                    name="Revenue"
                   />
                   <Line 
                     type="monotone" 
                     dataKey="expenses" 
                     stroke="#F59E0B" 
                     strokeWidth={3} 
-                    dot={false}
+                    dot={true}
                     name="Expenses"
                   />
                   <Legend 
@@ -221,7 +481,10 @@ const Dashboard = () => {
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-gray-500">
-                Loading chart...
+                <div className="text-center">
+                  <p className="text-lg font-medium mb-2">No Data Available</p>
+                  <p className="text-sm">Select a different period or branch to view data</p>
+                </div>
               </div>
             )}
           </div>
@@ -243,45 +506,99 @@ const Dashboard = () => {
           </div>
           
           <div className="space-y-4">
+            {invoiceLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="flex-1 bg-gray-200 rounded-full h-2">
+                        <div className="bg-gray-300 h-2 rounded-full animate-pulse" style={{width: '50%'}}></div>
+                      </div>
+                    </div>
+                    <div className="h-4 w-8 bg-gray-200 rounded animate-pulse ml-3"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 flex-1">
                  <span className="text-sm text-gray-600 whitespace-nowrap">1-30 days</span>
                 <div className="flex-1 bg-gray-200 rounded-full h-2">
-                  <div className="bg-yellow-500 h-2 rounded-full" style={{width: '70%'}}></div>
-                </div>
-              </div>
-              <span className="text-sm text-black font-medium ml-3">5</span>
+                      <div 
+                        className="bg-yellow-500 h-2 rounded-full" 
+                        style={{
+                          width: `${invoiceData?.overdueBreakdown?.['1-30'] ? 
+                            Math.min((invoiceData.overdueBreakdown['1-30'] / Math.max(invoiceData.overdueBreakdown['1-30'], 1)) * 100, 100) : 0}%`
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                  <span className="text-sm text-black font-medium ml-3">
+                    {invoiceData?.overdueBreakdown?.['1-30'] || 0}
+                  </span>
             </div>
             
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 flex-1">
                 <span className="text-sm text-gray-600 whitespace-nowrap">31-60 days</span>
                 <div className="flex-1 bg-gray-200 rounded-full h-2">
-                  <div className="bg-orange-500 h-2 rounded-full" style={{width: '40%'}}></div>
-                </div>
-              </div>
-              <span className="text-sm text-black font-medium ml-3">3</span>
+                      <div 
+                        className="bg-orange-500 h-2 rounded-full" 
+                        style={{
+                          width: `${invoiceData?.overdueBreakdown?.['31-60'] ? 
+                            Math.min((invoiceData.overdueBreakdown['31-60'] / Math.max(invoiceData.overdueBreakdown['31-60'], 1)) * 100, 100) : 0}%`
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                  <span className="text-sm text-black font-medium ml-3">
+                    {invoiceData?.overdueBreakdown?.['31-60'] || 0}
+                  </span>
             </div>
             
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 flex-1">
                 <span className="text-sm text-gray-600 whitespace-nowrap">61-90 days</span>
                 <div className="flex-1 bg-gray-200 rounded-full h-2">
-                  <div className="bg-red-500 h-2 rounded-full" style={{width: '90%'}}></div>
+                      <div 
+                        className="bg-red-500 h-2 rounded-full" 
+                        style={{
+                          width: `${invoiceData?.overdueBreakdown?.['61-90'] ? 
+                            Math.min((invoiceData.overdueBreakdown['61-90'] / Math.max(invoiceData.overdueBreakdown['61-90'], 1)) * 100, 100) : 0}%`
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                  <span className="text-sm text-black font-medium ml-3">
+                    {invoiceData?.overdueBreakdown?.['61-90'] || 0}
+                  </span>
                 </div>
-              </div>
-              <span className="text-sm text-black font-medium ml-3">7</span>
-            </div>
+              </>
+            )}
           </div>
 
           <div className="mt-6 pt-4 border-t border-gray-200 space-y-3">
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Total unpaid invoice</span>
-              <span className="text-sm text-gray-600 font-medium">₦256,200</span>
+              <span className="text-sm text-gray-600 font-medium">
+                {invoiceLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin inline" />
+                ) : (
+                  formatCurrency(invoiceData?.totalUnpaidAmount || 0)
+                )}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Total Overdue</span>
-              <span className="text-sm text-gray-600 font-medium">₦156,200</span>
+              <span className="text-sm text-gray-600 font-medium">
+                {invoiceLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin inline" />
+                ) : (
+                  formatCurrency(invoiceData?.totalOverdueAmount || 0)
+                )}
+              </span>
             </div>
           </div>
         </div>
@@ -303,40 +620,92 @@ const Dashboard = () => {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Sales */}
             <div className="bg-pink-50 p-4 rounded-xl">
               <div className="w-10 h-10 bg-pink-500 rounded-lg flex items-center justify-center mb-3">
                 <ShoppingBag className="w-5 h-5 text-white" />
               </div>
-              <div className="text-xl font-bold text-gray-900">₦450,239</div>
+              <div className="text-xl font-bold text-gray-900">
+                {salesLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  formatCurrency(todaySales?.totalSales || 0)
+                )}
+              </div>
               <div className="text-sm text-gray-600 mb-1">Total Sales</div>
-              <div className="text-xs text-pink-500">+8% from yesterday</div>
+              <div className="text-xs text-pink-500">
+                {salesLoading ? (
+                  <div className="h-3 w-12 bg-gray-200 rounded animate-pulse"></div>
+                ) : (
+                  `+${todaySales?.salesChange || 0}% from yesterday`
+                )}
+              </div>
             </div>
 
+            {/* Total Orders */}
             <div className="bg-orange-50 p-4 rounded-xl">
               <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center mb-3">
                 <Package className="w-5 h-5 text-white" />
               </div>
-              <div className="text-xl font-bold text-gray-900">300</div>
-              <div className="text-sm text-gray-600 mb-1">Total Order</div>
-              <div className="text-xs text-orange-500">+5% from yesterday</div>
+              <div className="text-xl font-bold text-gray-900">
+                {salesLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  todaySales?.totalOrders || 0
+                )}
+              </div>
+              <div className="text-sm text-gray-600 mb-1">Total Orders</div>
+              <div className="text-xs text-orange-500">
+                {salesLoading ? (
+                  <div className="h-3 w-12 bg-gray-200 rounded animate-pulse"></div>
+                ) : (
+                  `+${todaySales?.ordersChange || 0}% from yesterday`
+                )}
+              </div>
             </div>
 
+            {/* Products Sold */}
             <div className="bg-purple-50 p-4 rounded-xl">
               <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center mb-3">
                 <ShoppingBag className="w-5 h-5 text-white" />
               </div>
-              <div className="text-xl font-bold text-gray-900">5</div>
-              <div className="text-sm text-gray-600 mb-1">Product Sold</div>
-              <div className="text-xs text-purple-500">+1.2% from yesterday</div>
+              <div className="text-xl font-bold text-gray-900">
+                {salesLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  todaySales?.productsSold || 0
+                )}
+              </div>
+              <div className="text-sm text-gray-600 mb-1">Products Sold</div>
+              <div className="text-xs text-purple-500">
+                {salesLoading ? (
+                  <div className="h-3 w-12 bg-gray-200 rounded animate-pulse"></div>
+                ) : (
+                  `+${todaySales?.productsChange || 0}% from yesterday`
+                )}
+              </div>
             </div>
 
+            {/* New Customers */}
             <div className="bg-yellow-50 p-4 rounded-xl">
               <div className="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center mb-3">
                 <Users className="w-5 h-5 text-white" />
               </div>
-              <div className="text-xl font-bold text-gray-900">8</div>
+              <div className="text-xl font-bold text-gray-900">
+                {salesLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  todaySales?.newCustomers || 0
+                )}
+              </div>
               <div className="text-sm text-gray-600 mb-1">New Customers</div>
-              <div className="text-xs text-yellow-500">0.5% from yesterday</div>
+              <div className="text-xs text-yellow-500">
+                {salesLoading ? (
+                  <div className="h-3 w-12 bg-gray-200 rounded animate-pulse"></div>
+                ) : (
+                  `+${todaySales?.customersChange || 0}% from yesterday`
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -346,36 +715,69 @@ const Dashboard = () => {
           <h3 className="text-xl font-semibold text-gray-900 mb-6">Low Quantity Stock</h3>
           
           <div className="space-y-4">
-            <div className="flex items-center justify-between py-2">
+            {salesLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between py-2">
               <div>
-                <div className="font-medium text-gray-900">iPhone 15promax 256gb</div>
-                <div className="text-sm text-gray-500">Remaining Quantity: <span className="text-red-500">2 Pieces</span></div>
+                      <div className="h-4 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
+                      <div className="h-3 w-24 bg-gray-200 rounded animate-pulse"></div>
               </div>
             </div>
-            
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <div className="font-medium text-gray-900">HP 1040 G2</div>
-                <div className="text-sm text-gray-500">Remaining Quantity: <span className="text-red-500">1 Pieces</span></div>
+                ))}
+              </div>
+            ) : salesData?.inventory?.lowStockAlert?.products && salesData.inventory.lowStockAlert.products.length > 0 ? (
+              salesData.inventory.lowStockAlert.products.slice(0, 3).map((product, index) => (
+                <div key={product._id || index} className="flex items-center justify-between py-2">
+                  <div>
+                    <div className="font-medium text-gray-900">{product.itemName}</div>
+                    <div className="text-sm text-gray-500">
+                      Remaining Quantity: <span className="text-red-500">{product.quantity} Pieces</span>
+                    </div>
               </div>
             </div>
-            
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <div className="font-medium text-gray-900">PS 5</div>
-                <div className="text-sm text-gray-500">Remaining Quantity: <span className="text-red-500">3 Pieces</span></div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <Package className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">No low stock items</p>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Total Revenue Bar Chart */}
       <div className="bg-white p-6 rounded-xl shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Total Revenue</h3>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">Total Revenue</h3>
+          <select
+            className="px-3 py-1 border text-[#FBB906] border-gray-300 rounded-lg text-sm"
+            value={selectedLocation}
+            onChange={(e) => handleLocationChange(e.target.value)}
+            disabled={branchesLoading}
+          >
+            {branchesLoading ? (
+              <option value="">Loading branches...</option>
+            ) : (
+              branchOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
         
         <div className="h-80">
-          {mounted ? (
+          {dailyRevenueLoading ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#E866B7]" />
+                <p className="text-gray-600">Loading revenue data...</p>
+              </div>
+            </div>
+          ) : mounted && revenueData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={revenueData} barCategoryGap="20%">
                 <XAxis 
@@ -400,7 +802,10 @@ const Dashboard = () => {
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
-              Loading chart...
+              <div className="text-center">
+                <p className="text-lg font-medium mb-2">No Revenue Data Available</p>
+                <p className="text-sm">Select a different period or branch to view data</p>
+              </div>
             </div>
           )}
         </div>
@@ -409,4 +814,12 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+const AccountingDashboard = () => {
+  return (
+    <ProtectedRoute requiredRoles={['Accounting', 'Super Admin', 'Admin']}>
+      <Dashboard />
+    </ProtectedRoute>
+  );
+};
+
+export default AccountingDashboard;

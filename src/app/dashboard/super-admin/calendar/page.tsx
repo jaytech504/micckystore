@@ -1,70 +1,80 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Plus, Loader2, Eye, Edit, Trash2, X } from 'lucide-react';
+import { useEvents, useUpcomingEvents, useEventOperations } from '../hooks/useEvents';
+import { useEmployees } from '../hooks/useEmployees';
+import { useAuth } from '../../../../hooks/useAuth';
+import ProtectedRoute from '../../../../components/ProtectedRoute';
 
 const CalendarPage = () => {
-  const [currentDate, setCurrentDate] = useState(new Date(2025, 1, 1)); // February 2025
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'Day' | 'Week' | 'Month'>('Month');
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [showEventModal, setShowEventModal] = useState(false);
 
-  // Mock events data
-  const events = [
-    { id: 1, title: 'Office meeting', date: 3, type: 'meeting', color: 'bg-blue-100 text-blue-800 border-blue-200' },
-    { id: 2, title: 'Planned event', date: 16, type: 'planned', color: 'bg-purple-100 text-purple-800 border-purple-200' },
-    { id: 3, title: 'Planned event', date: 20, type: 'planned', color: 'bg-orange-100 text-orange-800 border-orange-200' },
-    { id: 4, title: 'Planned event', date: 25, type: 'planned', color: 'bg-blue-100 text-blue-800 border-blue-200' }
-  ];
+  // Get current user
+  const { user } = useAuth();
 
-  const upcomingEvents = [
-    {
-      title: 'Planned event',
-      time: 'Time',
-      location: 'Location',
-      additionalInfo: 'Additional info',
-      attendees: [
-        { id: 1, name: 'User 1', avatar: null },
-        { id: 2, name: 'User 2', avatar: null },
-        { id: 3, name: 'User 3', avatar: null },
-        { id: 4, name: '15+', isCount: true }
-      ]
-    },
-    {
-      title: 'Planned event',
-      time: 'Time',
-      location: 'Location',
-      additionalInfo: 'Additional info',
-      attendees: [
-        { id: 1, name: 'User 1', avatar: null },
-        { id: 2, name: 'User 2', avatar: null },
-        { id: 3, name: 'User 3', avatar: null },
-        { id: 4, name: '15+', isCount: true }
-      ]
-    },
-    {
-      title: 'Planned event',
-      time: 'Time',
-      location: 'Location',
-      additionalInfo: 'Additional info',
-      attendees: [
-        { id: 1, name: 'User 1', avatar: null },
-        { id: 2, name: 'User 2', avatar: null },
-        { id: 3, name: 'User 3', avatar: null },
-        { id: 4, name: '15+', isCount: true }
-      ]
-    },
-    {
-      title: 'Planned event',
-      time: 'Time',
-      location: 'Location',
-      additionalInfo: 'Additional info',
-      attendees: [
-        { id: 1, name: 'User 1', avatar: null },
-        { id: 2, name: 'User 2', avatar: null },
-        { id: 3, name: 'User 3', avatar: null },
-        { id: 4, name: '15+', isCount: true }
-      ]
+  // Get current month and year for API calls
+  const currentMonth = currentDate.getMonth() + 1;
+  const currentYear = currentDate.getFullYear();
+
+  // Fetch events for current month
+  const { events, loading: eventsLoading, error: eventsError, refetchEvents } = useEvents({
+    month: currentMonth,
+    year: currentYear
+  });
+
+  // Fetch upcoming events
+  const { events: upcomingEvents, loading: upcomingLoading, error: upcomingError } = useUpcomingEvents();
+
+  // Event operations
+  const { deleteEvent, loading: operationLoading } = useEventOperations();
+
+  // Fetch employees for attendee names
+  const { employees } = useEmployees({ limit: 100 });
+
+  // Event colors based on type or random
+  const getEventColor = (index: number) => {
+    const colors = [
+      'bg-blue-100 text-blue-800 border-blue-200',
+      'bg-purple-100 text-purple-800 border-purple-200',
+      'bg-orange-100 text-orange-800 border-orange-200',
+      'bg-green-100 text-green-800 border-green-200',
+      'bg-red-100 text-red-800 border-red-200',
+      'bg-yellow-100 text-yellow-800 border-yellow-200'
+    ];
+    return colors[index % colors.length];
+  };
+
+  // Get attendee names from IDs
+  const getAttendeeNames = (attendeeIds: string[]) => {
+    if (!employees || !attendeeIds) return [];
+    return attendeeIds.map(id => {
+      const employee = employees.find(emp => emp._id === id);
+      return employee ? { id, name: `${employee.firstName} ${employee.lastName}` } : { id, name: 'Unknown' };
+    });
+  };
+
+  // Handle event click
+  const handleEventClick = (event: any) => {
+    setSelectedEvent(event);
+    setShowEventModal(true);
+  };
+
+  // Handle delete event
+  const handleDeleteEvent = async (eventId: string) => {
+    if (window.confirm('Are you sure you want to delete this event?')) {
+      try {
+        await deleteEvent(eventId);
+        refetchEvents();
+        setShowEventModal(false);
+      } catch (error) {
+        console.error('Failed to delete event:', error);
+      }
     }
-  ];
+  };
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -130,7 +140,6 @@ const CalendarPage = () => {
 
   const days = getDaysInMonth(currentDate);
   const currentMonthName = monthNames[currentDate.getMonth()];
-  const currentYear = currentDate.getFullYear();
 
   return (
     <div className="space-y-6">
@@ -147,36 +156,56 @@ const CalendarPage = () => {
 
           {/* You are going to section */}
           <div className="p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">You are going to</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Events</h3>
+            {upcomingLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-[#FBB906]" />
+              </div>
+            ) : upcomingError ? (
+              <div className="text-red-500 text-sm text-center py-4">
+                Error loading upcoming events
+              </div>
+            ) : upcomingEvents.length === 0 ? (
+              <div className="text-gray-500 text-sm text-center py-4">
+                No upcoming events
+              </div>
+            ) : (
             <div className="space-y-4">
-              {upcomingEvents.map((event, index) => (
-                <div key={index} className="space-y-2">
-                  <h4 className="font-medium text-gray-900">{event.title}</h4>
+                {upcomingEvents.slice(0, 4).map((event, index) => {
+                  const attendeeNames = getAttendeeNames(event.attendees);
+                  return (
+                    <div key={event._id} className="space-y-2">
+                      <h4 className="font-medium text-gray-900 cursor-pointer hover:text-blue-600" onClick={() => handleEventClick(event)}>
+                        {event.name}
+                      </h4>
                   <div className="text-sm text-gray-600 space-y-1">
                     <p>{event.time}</p>
                     <p>{event.location}</p>
-                    <p>{event.additionalInfo}</p>
+                        {event.additionalInfo && <p>{event.additionalInfo}</p>}
                   </div>
                   <div className="flex items-center space-x-1">
-                    {event.attendees.map((attendee) => (
-                      <div key={attendee.id} className="relative">
-                        {attendee.isCount ? (
-                          <div className="w-8 h-8 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center font-medium">
-                            15+
+                        {attendeeNames.slice(0, 3).map((attendee) => (
+                          <div key={attendee.id} className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-600">
+                            {attendee.name.charAt(0)}
                           </div>
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gray-300"></div>
+                        ))}
+                        {attendeeNames.length > 3 && (
+                          <div className="w-8 h-8 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center font-medium">
+                            +{attendeeNames.length - 3}
+                          </div>
                         )}
                       </div>
-                    ))}
+                      {index < Math.min(upcomingEvents.length, 4) - 1 && <hr className="border-gray-200" />}
                   </div>
-                  {index < upcomingEvents.length - 1 && <hr className="border-gray-200" />}
+                  );
+                })}
                 </div>
-              ))}
-            </div>
+            )}
+            {upcomingEvents.length > 4 && (
             <button className="w-full text-center text-blue-600 hover:text-blue-700 text-sm font-medium mt-4">
               See More
             </button>
+            )}
           </div>
         </div>
 
@@ -242,7 +271,11 @@ const CalendarPage = () => {
               {/* Calendar days */}
               <div className="grid grid-cols-7 gap-1">
                 {days.map((dayInfo, index) => {
-                  const dayEvents = events.filter(event => event.date === dayInfo.day && dayInfo.isCurrentMonth);
+                  // Filter events for this day
+                  const dayEvents = events.filter(event => {
+                    const eventDate = new Date(event.date);
+                    return eventDate.getDate() === dayInfo.day && dayInfo.isCurrentMonth;
+                  });
                   
                   return (
                     <div
@@ -257,14 +290,21 @@ const CalendarPage = () => {
                         {dayInfo.day}
                       </div>
                       <div className="space-y-1">
-                        {dayEvents.map((event) => (
-                          <div
-                            key={event.id}
-                            className={`text-xs px-1 py-0.5 rounded border ${event.color} truncate`}
-                          >
-                            {event.title}
+                        {eventsLoading ? (
+                          <div className="flex justify-center">
+                            <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
                           </div>
-                        ))}
+                        ) : dayEvents.length > 0 ? (
+                          dayEvents.map((event, eventIndex) => (
+                            <div
+                              key={event._id}
+                              onClick={() => handleEventClick(event)}
+                              className={`text-xs px-1 py-0.5 rounded border ${getEventColor(eventIndex)} truncate cursor-pointer hover:opacity-80`}
+                            >
+                              {event.name}
+                            </div>
+                          ))
+                        ) : null}
                       </div>
                     </div>
                   );
@@ -274,8 +314,89 @@ const CalendarPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Event Details Modal */}
+      {showEventModal && selectedEvent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">{selectedEvent.name}</h3>
+              <button
+                onClick={() => setShowEventModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-3 mb-6">
+              <div>
+                <span className="text-sm font-medium text-gray-600">Date:</span>
+                <p className="text-gray-900">{new Date(selectedEvent.date).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-600">Time:</span>
+                <p className="text-gray-900">{selectedEvent.time}</p>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-600">Location:</span>
+                <p className="text-gray-900">{selectedEvent.location}</p>
+              </div>
+              {selectedEvent.additionalInfo && (
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Additional Info:</span>
+                  <p className="text-gray-900">{selectedEvent.additionalInfo}</p>
+                </div>
+              )}
+              <div>
+                <span className="text-sm font-medium text-gray-600">Attendees:</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {getAttendeeNames(selectedEvent.attendees).map((attendee) => (
+                    <span key={attendee.id} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                      {attendee.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  // Navigate to edit page or open edit modal
+                  window.location.href = `/dashboard/super-admin/calendar/add-task?edit=${selectedEvent._id}`;
+                }}
+                className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
+              >
+                <Edit className="w-4 h-4" />
+                Edit
+              </button>
+              <button
+                onClick={() => handleDeleteEvent(selectedEvent._id)}
+                disabled={operationLoading}
+                className="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {operationLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default CalendarPage;
+const CalendarPageWithAuth = () => {
+  return (
+    <ProtectedRoute requiredRoles={['Super Admin', 'Admin']}>
+      <CalendarPage />
+    </ProtectedRoute>
+  );
+};
+
+export default CalendarPageWithAuth;

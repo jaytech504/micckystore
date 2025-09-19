@@ -1,10 +1,12 @@
 'use client';
 
-import React, { ReactNode } from 'react';
-import { User, Calendar, CheckSquare, UserMinus, Mail } from 'lucide-react';
+import React, { ReactNode, useState, useEffect } from 'react';
+import { User, Calendar, CheckSquare, UserMinus, Mail, Loader2 } from 'lucide-react';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useEmployee } from '../../hooks/useEmployees';
+import { useAuth } from '../../../../../hooks/useAuth';
 
 interface EmployeeLayoutProps {
   children: ReactNode;
@@ -18,19 +20,23 @@ const sidebarItems = [
   { id: 'leave', label: 'Leave', icon: UserMinus, href: '/dashboard/super-admin/team-space/profile-detail/leave' }
 ];
 
-// Mock employee data - in a real app, you'd fetch this based on route params or context
-const employeeData = {
-  name: 'Samuel Monday',
-  role: 'UI/UX Designer',
-  email: 'samuelmonday857@gmail.com',
-  avatar: undefined
-};
-
 export default function EmployeeLayout({ 
   children,
   params
 }: EmployeeLayoutProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
+
+  // Get employee ID from URL params or use current user
+  useEffect(() => {
+    const empId = searchParams.get('employeeId');
+    setEmployeeId(empId || user?.id || null);
+  }, [searchParams, user]);
+
+  // Fetch employee data
+  const { employee, loading: employeeLoading, error: employeeError } = useEmployee(employeeId || '');
 
   const isActive = (href: string) => {
     // Exact match for the profile route
@@ -41,27 +47,60 @@ export default function EmployeeLayout({
     return pathname.startsWith(href);
   };
 
+  // Show loading state while fetching employee data
+  if (employeeLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#E866B7] mx-auto mb-4" />
+          <p className="text-gray-600">Loading employee details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if employee data failed to load
+  if (employeeError || !employee) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">
+            {employeeError || 'Employee not found'}
+          </p>
+          <Link 
+            href="/dashboard/super-admin/team-space"
+            className="text-[#E866B7] hover:underline"
+          >
+            Back to Team Space
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const employeeName = `${employee.firstName} ${employee.lastName}`;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header Section */}
       <div className="bg-none border-b border-gray-200 px-4 sm:px-0 pb-3 mt-0">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-gray-900 font-bold">Samuel Monday</h2>
+          <h2 className="text-gray-900 font-bold">{employeeName}</h2>
           {/* Breadcrumb */}
           <div className="flex items-center text-sm text-gray-500 mb-4 mt-0">
             <span>All Employee</span>
             <span className="mx-2">{'>'}</span>
-            <span className="text-gray-900">Samuel Monday</span>
+            <span className="text-gray-900">{employeeName}</span>
           </div>
 
           {/* Employee Info */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
-                {employeeData?.avatar ? (
+                {employee.profileImage ? (
                   <Image
-                    src={employeeData.avatar}
-                    alt={`${employeeData.name} Avatar`}
+                    src={employee.profileImage}
+                    alt={`${employeeName} Avatar`}
                     width={80}
                     height={80}
                     className="w-full h-full object-cover"
@@ -74,15 +113,15 @@ export default function EmployeeLayout({
               </div>
               <div className="min-w-0 flex-1">
                 <h1 className="text-1xl font-bold text-gray-900 truncate">
-                  {employeeData.name}
+                  {employeeName}
                 </h1>
                 <div className="flex items-center gap-2 mt-1">
                   <CheckSquare className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-600 text-sm">{employeeData.role}</span>
+                  <span className="text-gray-600 text-sm">{employee.jobTitle || employee.role}</span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <Mail className="w-4 h-4 text-gray-400"/>
-                  <span className="text-gray-600 text-sm">{employeeData.email}</span>
+                  <span className="text-gray-600 text-sm">{employee.email}</span>
                 </div>
               </div>
             </div>

@@ -1,38 +1,47 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Download, Plus, Filter, User } from 'lucide-react';
+import { useVendors } from '../../../../hooks/useVendors';
 
 const VendorsDashboard = () => {
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
   const [supplierType, setSupplierType] = useState('Not taking return');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedType, setSelectedType] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  
   const [formData, setFormData] = useState({
     vendorName: '',
     product: '',
     quantity: '',
     buyingPrice: '',
     contactNumber: '',
+    email: '',
     type: 'Not taking return'
   });
 
-  // Sample vendor data
-  const vendors = [
-    { id: 1, name: 'Vendors name', product: 'iPhone 12', contact: '7687764556', email: 'richard@gmail.com', type: 'Taking Return', quantity: '13' },
-    { id: 2, name: 'Vendors name', product: 'iWatch', contact: '9867545368', email: 'tomhoman@gmail.com', type: 'Taking Return', quantity: '-' },
-    { id: 3, name: 'Vendors name', product: 'Samsung', contact: '9867545566', email: 'veandler@gmail.com', type: 'Not Taking Return', quantity: '-' },
-    { id: 4, name: 'Vendors name', product: 'Hp 840', contact: '9267545457', email: 'charin@gmail.com', type: 'Taking Return', quantity: '12' },
-    { id: 5, name: 'Vendors name', product: 'Dell', contact: '9367546531', email: 'hoffman@gmail.com', type: 'Taking Return', quantity: '-' },
-    { id: 6, name: 'Vendors name', product: 'Laptop', contact: '9667545982', email: 'fainden@gmail.com', type: 'Not Taking Return', quantity: '9' },
-    { id: 7, name: 'Vendors name', product: 'Saffola', contact: '9867545457', email: 'martin@gmail.com', type: 'Taking Return', quantity: '-' },
-    { id: 8, name: 'Vendors name', product: 'Good day', contact: '9567545769', email: 'joenike@gmail.com', type: 'Taking Return', quantity: '-' },
-    { id: 9, name: 'Vendors name', product: 'Apple', contact: '9667545980', email: 'dender@gmail.com', type: '', quantity: '7' },
-    { id: 10, name: 'Vendors name', product: 'Saffola', contact: '9867545457', email: 'martin@gmail.com', type: 'Taking Return', quantity: '-' },
-    { id: 11, name: 'Vendors name', product: 'Good day', contact: '9567545769', email: 'joenike@gmail.com', type: 'Taking Return', quantity: '-' },
-    { id: 12, name: 'Vendors name', product: 'Apple', contact: '9667545980', email: 'dender@gmail.com', type: 'Not Taking Return', quantity: '7' },
-    { id: 13, name: 'Vendors name', product: 'Good day', contact: '9567545769', email: 'joenike@gmail.com', type: 'Taking Return', quantity: '-' },
-    { id: 14, name: 'Vendors name', product: 'Good day', contact: '9567545769', email: 'joenike@gmail.com', type: 'Taking Return', quantity: '-' }
-  ];
+  // API hook for vendors
+  const {
+    data: vendors,
+    loading: vendorsLoading,
+    error: vendorsError,
+    pagination,
+    createVendor,
+    refetch: refetchVendors
+  } = useVendors({
+    page: currentPage,
+    limit: 10,
+    search: searchTerm || undefined,
+    type: selectedType || undefined
+  });
+
+  // Handle search input changes
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -42,17 +51,33 @@ const VendorsDashboard = () => {
     }));
   };
 
-  const handleAddSupplier = () => {
-    console.log('Adding supplier:', formData);
-    setShowNewSupplierModal(false);
-    setFormData({
-      vendorName: '',
-      product: '',
-      quantity: '',
-      buyingPrice: '',
-      contactNumber: '',
-      type: 'Not taking return'
-    });
+  const handleAddSupplier = async () => {
+    try {
+      const vendorData = {
+        name: formData.vendorName,
+        products: [formData.product], // Convert single product to array
+        quantity: parseInt(formData.quantity) || 0,
+        buying_price: parseFloat(formData.buyingPrice) || 0,
+        phone_number: formData.contactNumber,
+        email: formData.email,
+        type: formData.type.toLowerCase().replace(' ', '_') as 'not taking return' | 'taking return'
+      };
+      
+      await createVendor(vendorData);
+      setShowNewSupplierModal(false);
+      setFormData({
+        vendorName: '',
+        product: '',
+        quantity: '',
+        buyingPrice: '',
+        contactNumber: '',
+        email: '',
+        type: 'Not taking return'
+      });
+    } catch (error) {
+      console.error('Error creating vendor:', error);
+      // You could add a toast notification here
+    }
   };
 
   const handleDiscard = () => {
@@ -63,6 +88,7 @@ const VendorsDashboard = () => {
       quantity: '',
       buyingPrice: '',
       contactNumber: '',
+      email: '',
       type: 'Not taking return'
     });
   };
@@ -89,7 +115,9 @@ const VendorsDashboard = () => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-900 w-4 h-4" />
           <input
             type="text"
-            placeholder="Search"
+            placeholder="Search vendors..."
+            value={searchTerm}
+            onChange={handleSearchChange}
             className="w-full pl-10 pr-16 py-2.5 text-black border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent"
           />
           <span className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-medium">
@@ -152,34 +180,66 @@ const VendorsDashboard = () => {
               </tr>
             </thead>
             <tbody>
-              {vendors.map((vendor, index) => (
-                <tr key={vendor.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="p-4 text-sm text-gray-900">{vendor.name}</td>
-                  <td className="p-4 text-sm text-gray-900">{vendor.product}</td>
-                  <td className="p-4 text-sm text-gray-900">{vendor.contact}</td>
-                  <td className="p-4 text-sm text-gray-900">{vendor.email}</td>
-                  <td className="p-4 text-sm">
-                    {vendor.type === 'Taking Return' && (
-                      <span className="text-green-600 font-medium">Taking Return</span>
-                    )}
-                    {vendor.type === 'Not Taking Return' && (
-                      <span className="text-red-500 font-medium">Not Taking Return</span>
-                    )}
+              {vendorsLoading ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-gray-500">
+                    Loading vendors...
                   </td>
-                  <td className="p-4 text-sm text-gray-900">{vendor.quantity}</td>
                 </tr>
-              ))}
+              ) : vendorsError ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-red-500">
+                    Error loading vendors: {vendorsError}
+                  </td>
+                </tr>
+              ) : vendors && vendors.length > 0 ? (
+                vendors.map((vendor) => (
+                  <tr key={vendor._id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="p-4 text-sm text-gray-900">{vendor.name}</td>
+                    <td className="p-4 text-sm text-gray-900">
+                      {vendor.products.length > 0 ? vendor.products.join(', ') : 'No products'}
+                    </td>
+                    <td className="p-4 text-sm text-gray-900">{vendor.phone_number}</td>
+                    <td className="p-4 text-sm text-gray-900">{vendor.email}</td>
+                    <td className="p-4 text-sm">
+                      {vendor.type === 'taking return' && (
+                        <span className="text-green-600 font-medium">Taking Return</span>
+                      )}
+                      {vendor.type === 'not taking return' && (
+                        <span className="text-red-500 font-medium">Not Taking Return</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-sm text-gray-900">{vendor.quantity}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-gray-500">
+                    No vendors found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border-t border-gray-200">
-          <button className="text-gray-600 hover:text-gray-800 px-3 py-2 rounded mb-2 sm:mb-0 transition-colors">
+          <button 
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className="text-gray-600 hover:text-gray-800 px-3 py-2 rounded mb-2 sm:mb-0 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Previous
           </button>
-          <span className="text-sm text-gray-600 mb-2 sm:mb-0">Page 1 of 10</span>
-          <button className="text-gray-600 hover:text-gray-800 px-3 py-2 rounded transition-colors">
+          <span className="text-sm text-gray-600 mb-2 sm:mb-0">
+            Page {pagination?.current_page || 1} of {pagination?.total_pages || 1}
+          </span>
+          <button 
+            onClick={() => setCurrentPage(prev => prev + 1)}
+            disabled={currentPage >= (pagination?.total_pages || 1)}
+            className="text-gray-600 hover:text-gray-800 px-3 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Next
           </button>
         </div>
@@ -264,6 +324,18 @@ const VendorsDashboard = () => {
                     value={formData.contactNumber}
                     onChange={handleInputChange}
                     placeholder="Enter supplier contact number"
+                    className="w-full px-3 py-2 text-gray-700 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Enter supplier email"
                     className="w-full px-3 py-2 text-gray-700 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
                   />
                 </div>

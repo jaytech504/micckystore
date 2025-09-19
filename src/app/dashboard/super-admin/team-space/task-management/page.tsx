@@ -1,8 +1,11 @@
 'use client'
 
-import React, { useState } from 'react'
-import { Search, Filter, Plus } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Search, Filter, Plus, Loader2 } from 'lucide-react'
 import { TaskDetailsModal, StartTaskModal, UpdateTaskModal, AddTaskModal } from './TaskModals';
+import { useTasks, useTaskStats, useTaskOperations, useTaskSearch } from '../../hooks/useTasks';
+import { useAuth } from '../../../../../hooks/useAuth';
+import ProtectedRoute from '../../../../../components/ProtectedRoute';
 
 interface Task {
   id: string
@@ -86,8 +89,7 @@ const initialTasks: Task[] = [
   }
 ]
 
-export default function TaskManagement() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks)
+function TaskManagement() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('All Status')
   const [selectedRole, setSelectedRole] = useState('All Roles')
@@ -98,11 +100,34 @@ export default function TaskManagement() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
+  const { user } = useAuth();
+  const { createTask, updateTask, deleteTask, markAsCompleted, markAsInProcess, loading: operationLoading } = useTaskOperations();
+
+  // API hooks
+  const { tasks, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useTasks({
+    status: selectedStatus !== 'All Status' ? (selectedStatus.toLowerCase().replace(' ', '_') as 'in_process' | 'completed') : undefined,
+    task_type: selectedRole !== 'All Roles' ? (selectedRole.toLowerCase() as 'repairs' | 'others') : undefined,
+    page: 1,
+    limit: 50
+  });
+
+  const { stats, loading: statsLoading, error: statsError } = useTaskStats();
+
+  const { tasks: searchResults, loading: searchLoading } = useTaskSearch(searchTerm, {
+    status: selectedStatus !== 'All Status' ? (selectedStatus.toLowerCase().replace(' ', '_') as 'in_process' | 'completed') : undefined,
+    task_type: selectedRole !== 'All Roles' ? (selectedRole.toLowerCase() as 'repairs' | 'others') : undefined
+  });
+
+  // Use search results if searching, otherwise use regular tasks
+  const displayTasks = searchTerm ? searchResults : tasks;
+  const isLoading = searchTerm ? searchLoading : tasksLoading;
+
+  // Calculate status counts from API data
   const statusCounts = {
-    total: tasks.length,
-    pending: tasks.filter(t => t.status === 'Pending').length,
-    inProgress: tasks.filter(t => t.status === 'In Progress').length,
-    completed: tasks.filter(t => t.status === 'Completed').length
+    total: displayTasks.length,
+    pending: displayTasks.filter(t => t.status === 'in process').length,
+    inProgress: displayTasks.filter(t => t.status === 'in process').length,
+    completed: displayTasks.filter(t => t.status === 'completed').length
   }
 
   const handleStartTask = (task: Task) => {
@@ -120,33 +145,50 @@ export default function TaskManagement() {
     setShowDetailsModal(true)
   }
 
-  const confirmStartTask = (note?: string) => {
+  const confirmStartTask = async (note?: string) => {
     if (selectedTask) {
-      setTasks(tasks.map(t => 
-        t.id === selectedTask.id 
-          ? { ...t, status: 'In Progress' as const }
-          : t
-      ))
+      try {
+        await markAsInProcess(selectedTask.id);
+        refetchTasks(); // Refresh the task list
+      } catch (error) {
+        console.error('Error starting task:', error);
+      }
     }
     setShowStartModal(false)
     setSelectedTask(null)
   }
 
-  const confirmUpdateTask = (updatedTask: Task) => {
-    setTasks(tasks.map(t => 
-      t.id === updatedTask.id ? updatedTask : t
-    ))
+  const confirmUpdateTask = async (updatedTask: Task) => {
+    try {
+      await updateTask(updatedTask.id, {
+        name: updatedTask.title,
+        description: updatedTask.description,
+        status: updatedTask.status === 'In Progress' ? 'in process' : 'completed',
+        task_type: updatedTask.department === 'Engineer' ? 'repairs' : 'others'
+      });
+      refetchTasks(); // Refresh the task list
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
     setShowUpdateModal(false)
     setSelectedTask(null)
   }
 
-  const createTask = (newTask: Omit<Task, 'id'>) => {
-    const task: Task = {
-      ...newTask,
-      id: (tasks.length + 1).toString(),
-      createdBy: 'Alex Manager'
+  const handleCreateTask = async (newTask: Omit<Task, 'id'>) => {
+    try {
+      await createTask({
+        name: newTask.title,
+        description: newTask.description,
+        start_date: new Date().toISOString().split('T')[0],
+        finish_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
+        status: 'in process',
+        user: user?.id || '', // Assign to current user or get from form
+        task_type: newTask.department === 'Engineer' ? 'repairs' : 'others'
+      });
+      refetchTasks(); // Refresh the task list
+    } catch (error) {
+      console.error('Error creating task:', error);
     }
-    setTasks([...tasks, task])
     setShowAddModal(false)
   }
 
@@ -192,22 +234,14 @@ export default function TaskManagement() {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm text-gray-600">Total Tasks</p>
-              <p className="text-2xl text-black font-semibold">{statusCounts.total}</p>
+              {statsLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin text-[#E866B7] mt-2" />
+              ) : (
+                <p className="text-2xl text-black font-semibold">{stats?.totalTasks || statusCounts.total}</p>
+              )}
             </div>
             <div className="bg-gray-100 text-black px-2 py-1 rounded text-sm font-medium">
-              6
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-gray-600">Pending</p>
-              <p className="text-2xl text-black font-semibold">{statusCounts.pending}</p>
-            </div>
-            <div className="bg-red-500 text-white px-2 py-1 rounded text-sm font-medium">
-              3
+              {statusCounts.total}
             </div>
           </div>
         </div>
@@ -216,10 +250,14 @@ export default function TaskManagement() {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm text-gray-600">In Progress</p>
-              <p className="text-2xl text-black font-semibold">{statusCounts.inProgress}</p>
+              {statsLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin text-[#E866B7] mt-2" />
+              ) : (
+                <p className="text-2xl text-black font-semibold">{stats?.inProcessTasks || statusCounts.inProgress}</p>
+              )}
             </div>
             <div className="bg-[#FBB906] text-white px-2 py-1 rounded text-sm font-medium">
-              2
+              {statusCounts.inProgress}
             </div>
           </div>
         </div>
@@ -228,10 +266,30 @@ export default function TaskManagement() {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm text-gray-600">Completed</p>
-              <p className="text-2xl text-black font-semibold">{statusCounts.completed}</p>
+              {statsLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin text-[#E866B7] mt-2" />
+              ) : (
+                <p className="text-2xl text-black font-semibold">{stats?.completedTasks || statusCounts.completed}</p>
+              )}
             </div>
             <div className="bg-green-600 text-white px-2 py-1 rounded text-sm font-medium">
-              1
+              {statusCounts.completed}
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-sm text-gray-600">Overdue</p>
+              {statsLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin text-[#E866B7] mt-2" />
+              ) : (
+                <p className="text-2xl text-black font-semibold">{stats?.overdueTasks || 0}</p>
+              )}
+            </div>
+            <div className="bg-red-500 text-white px-2 py-1 rounded text-sm font-medium">
+              {stats?.overdueTasks || 0}
             </div>
           </div>
         </div>
@@ -293,64 +351,119 @@ export default function TaskManagement() {
 
       {/* Task Grid */}
       <div className="grid grid-cols-3 gap-6">
-        {tasks.map((task) => (
-          <div key={task.id} className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-2">
-                <span className={`text-xs px-2 py-1 rounded-full border ${getStatusTextColor(task.status)}`}>
-                  {task.status}
-                </span>
-              </div>
-              <span className={`text-xs px-2 py-1 font-medium rounded-full border ${getPriorityColor(task.priority)}`}>
-                {task.priority}
-              </span>
-            </div>
-            
-            <h4 className="font-semibold text-gray-900 mb-2">{task.title}</h4>
-            <p className="text-sm text-gray-600 mb-4">{task.description}</p>
-            
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-black font-medium">MA</span>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-700 font-medium">{task.assignedTo}</p>
-                  <p className="text-xs text-gray-500">{task.department}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className={`text-xs mb-4 ${task.overdue ? 'text-red-600' : 'text-gray-500'}`}>
-              Due {task.dueDate} {task.overdue && '(Overdue)'}
-            </div>
-            
-            <div className="flex gap-2">
-              <button 
-                onClick={() => handleViewDetails(task)}
-                className="flex-1 px-3 py-2 border text-black border-gray-200 rounded-lg text-sm hover:bg-gray-50"
-              >
-                View Details
-              </button>
-              {task.status === 'Pending' && (
-                <button
-                  onClick={() => handleStartTask(task)}
-                  className="flex-1 px-3 py-2 bg-[#E866B7] text-white rounded-lg text-sm hover:bg-pink-600"
-                >
-                  Start
-                </button>
-              )}
-              {task.status === 'In Progress' && (
-                <button
-                  onClick={() => handleUpdateTask(task)}
-                  className="flex-1 px-3 py-2 bg-[#E866B7] text-white rounded-lg text-sm hover:bg-pink-600"
-                >
-                  Update
-                </button>
-              )}
+        {isLoading ? (
+          <div className="col-span-3 flex items-center justify-center py-12">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-[#E866B7] mx-auto mb-4" />
+              <p className="text-gray-600">Loading tasks...</p>
             </div>
           </div>
-        ))}
+        ) : tasksError ? (
+          <div className="col-span-3 flex items-center justify-center py-12">
+            <div className="text-center text-red-500">
+              <p>Error loading tasks: {tasksError}</p>
+            </div>
+          </div>
+        ) : displayTasks.length === 0 ? (
+          <div className="col-span-3 flex items-center justify-center py-12">
+            <div className="text-center text-gray-500">
+              <p>No tasks found</p>
+            </div>
+          </div>
+        ) : (
+          displayTasks.map((task) => (
+            <div key={task._id} className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-1 rounded-full border ${getStatusTextColor(task.status === 'in process' ? 'In Progress' : 'Completed')}`}>
+                    {task.status === 'in process' ? 'In Progress' : 'Completed'}
+                  </span>
+                </div>
+                <span className={`text-xs px-2 py-1 font-medium rounded-full border ${getPriorityColor('Medium')}`}>
+                  {task.task_type === 'repairs' ? 'Repair' : 'Other'}
+                </span>
+              </div>
+              
+              <h4 className="font-semibold text-gray-900 mb-2">{task.name}</h4>
+              <p className="text-sm text-gray-600 mb-4">{task.description}</p>
+              
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                    <span className="text-xs text-black font-medium">
+                      {task.user?.firstName?.charAt(0) || 'U'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-700 font-medium">
+                      {task.user?.firstName} {task.user?.lastName}
+                    </p>
+                    <p className="text-xs text-gray-500">{task.task_type}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-xs mb-4 text-gray-500">
+                Due {new Date(task.finish_date).toLocaleDateString()}
+              </div>
+              
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => handleViewDetails({
+                    id: task._id,
+                    title: task.name,
+                    description: task.description,
+                    assignedTo: `${task.user?.firstName} ${task.user?.lastName}`,
+                    department: task.task_type,
+                    dueDate: new Date(task.finish_date).toLocaleDateString(),
+                    priority: 'Medium',
+                    status: task.status === 'in process' ? 'In Progress' : 'Completed',
+                    overdue: new Date(task.finish_date) < new Date()
+                  })}
+                  className="flex-1 px-3 py-2 border text-black border-gray-200 rounded-lg text-sm hover:bg-gray-50"
+                >
+                  View Details
+                </button>
+                {task.status === 'in process' && (
+                  <button
+                    onClick={() => handleStartTask({
+                      id: task._id,
+                      title: task.name,
+                      description: task.description,
+                      assignedTo: `${task.user?.firstName} ${task.user?.lastName}`,
+                      department: task.task_type,
+                      dueDate: new Date(task.finish_date).toLocaleDateString(),
+                      priority: 'Medium',
+                      status: 'In Progress',
+                      overdue: new Date(task.finish_date) < new Date()
+                    })}
+                    className="flex-1 px-3 py-2 bg-[#E866B7] text-white rounded-lg text-sm hover:bg-pink-600"
+                  >
+                    Start
+                  </button>
+                )}
+                {task.status === 'in process' && (
+                  <button
+                    onClick={() => handleUpdateTask({
+                      id: task._id,
+                      title: task.name,
+                      description: task.description,
+                      assignedTo: `${task.user?.firstName} ${task.user?.lastName}`,
+                      department: task.task_type,
+                      dueDate: new Date(task.finish_date).toLocaleDateString(),
+                      priority: 'Medium',
+                      status: 'In Progress',
+                      overdue: new Date(task.finish_date) < new Date()
+                    })}
+                    className="flex-1 px-3 py-2 bg-[#E866B7] text-white rounded-lg text-sm hover:bg-pink-600"
+                  >
+                    Update
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* MODAL COMPONENTS - COPY THE MODALS FROM THE FIRST ARTIFACT AND PASTE THEM HERE */}
@@ -384,9 +497,19 @@ export default function TaskManagement() {
       {showAddModal && (
         <AddTaskModal
           onClose={() => setShowAddModal(false)}
-          onConfirm={createTask}
+          onConfirm={handleCreateTask}
         />
       )}
     </div>
   )
 }
+
+const TaskManagementPage = () => {
+  return (
+    <ProtectedRoute requiredRoles={['Super Admin', 'Admin']}>
+      <TaskManagement />
+    </ProtectedRoute>
+  );
+};
+
+export default TaskManagementPage;

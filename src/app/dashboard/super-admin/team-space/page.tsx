@@ -1,25 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Search, Eye, Edit, Trash2, ChevronDown } from 'lucide-react';
-
-interface Employee {
-  id: string;
-  name: string;
-  workMode: string;
-  gender: string;
-  staffId: string;
-  phone: string;
-  systemRole: string;
-  jobTitle: string;
-  status: string;
-}
+import React, { useState, useEffect } from 'react';
+import { Search, Eye, Edit, Trash2, ChevronDown, Loader2 } from 'lucide-react';
+import { useEmployees, useEmployeeStats, useEmployeeSearch, useEmployeeOperations } from '../hooks/useEmployees';
+import { useAuth } from '../../../../hooks/useAuth';
+import ProtectedRoute from '../../../../components/ProtectedRoute';
 
 const EmployeeManagementMain = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All staff');
   const [currentPage, setCurrentPage] = useState(1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Debounce search term to prevent too many API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const { user } = useAuth();
+  const { deleteEmployee } = useEmployeeOperations();
 
   const filterOptions = [
     'All staff',
@@ -31,118 +35,29 @@ const EmployeeManagementMain = () => {
     'Office Assistant'
   ];
 
-  const employees: Employee[] = [
+  // API hooks - only make calls when needed
+  const { employees, loading: employeesLoading, error: employeesError, pagination, refetch: refetchEmployees } = useEmployees({
+    page: currentPage,
+    limit: 10,
+    department: filterStatus !== 'All staff' ? filterStatus : undefined,
+    status: 'Active' // Only show active employees by default
+  });
+
+  const { stats, loading: statsLoading, error: statsError } = useEmployeeStats();
+
+  // Only search when there's a debounced search term and it's not empty
+  const { employees: searchResults, loading: searchLoading } = useEmployeeSearch(
+    debouncedSearchTerm.trim().length > 0 ? debouncedSearchTerm : '', 
     {
-      id: '01',
-      name: 'Samuel',
-      workMode: 'Remote',
-      gender: 'Male',
-      staffId: 'UX0011',
-      phone: '0904 814 2949',
-      systemRole: 'Super Admin',
-      jobTitle: 'UX designer',
-      status: 'Active'
-    },
-    {
-      id: '02',
-      name: 'Nifemi',
-      workMode: 'Office',
-      gender: 'Female',
-      staffId: 'SRG0011',
-      phone: '0904 814 2949',
-      systemRole: 'Online sales rep',
-      jobTitle: 'UX designer',
-      status: 'Active'
-    },
-    {
-      id: '03',
-      name: 'Dennis',
-      workMode: 'Office',
-      gender: 'Male',
-      staffId: 'SRL0011',
-      phone: '0904 814 2949',
-      systemRole: 'Online sales rep',
-      jobTitle: 'UX designer',
-      status: 'Active'
-    },
-    {
-      id: '04',
-      name: 'Samad',
-      workMode: 'Office',
-      gender: 'Male',
-      staffId: 'OAI11',
-      phone: '0904 814 2949',
-      systemRole: 'Office assistant',
-      jobTitle: 'UX designer',
-      status: 'Resigned'
-    },
-    {
-      id: '05',
-      name: 'Margret',
-      workMode: 'Hybrid',
-      gender: 'Female',
-      staffId: 'AC0011',
-      phone: '0904 814 2949',
-      systemRole: 'Accounting',
-      jobTitle: 'Office assistant',
-      status: 'Active'
-    },
-    {
-      id: '06',
-      name: 'Osas',
-      workMode: 'Office',
-      gender: 'Male',
-      staffId: 'ENG0011',
-      phone: '0904 814 2949',
-      systemRole: 'Engineer',
-      jobTitle: 'Office assistant',
-      status: 'Active'
-    },
-    {
-      id: '07',
-      name: 'Tina',
-      workMode: 'Office',
-      gender: 'Female',
-      staffId: 'SRI0011',
-      phone: '0904 814 2949',
-      systemRole: 'Sales',
-      jobTitle: 'Office assistant',
-      status: 'Active'
-    },
-    {
-      id: '08',
-      name: 'Isaiah',
-      workMode: 'Office',
-      gender: 'Male',
-      staffId: 'OAI0011',
-      phone: '0904 814 2949',
-      systemRole: 'Office assistant',
-      jobTitle: 'Office assistant',
-      status: 'Resigned'
-    },
-    {
-      id: '09',
-      name: 'Semiu',
-      workMode: 'Office',
-      gender: 'Male',
-      staffId: 'ENI0011',
-      phone: '0904 814 2949',
-      systemRole: 'Office assistant',
-      jobTitle: 'Office assistant',
-      status: 'Active'
-    },
-    {
-      id: '10',
-      name: 'Chineye',
-      workMode: 'Office',
-      gender: 'Female',
-      staffId: 'FGD0011',
-      phone: '0904 814 2949',
-      systemRole: 'Office assistant',
-      jobTitle: 'Office assistant',
-      status: 'Active'
+      page: currentPage,
+      limit: 10,
+      department: filterStatus !== 'All staff' ? filterStatus : undefined
     }
-  ];
+  );
+
+  // Use search results if searching, otherwise use regular employees
+  const displayEmployees = debouncedSearchTerm.trim().length > 0 ? searchResults : employees;
+  const isLoading = debouncedSearchTerm.trim().length > 0 ? searchLoading : employeesLoading;
 
   const getWorkModeColor = (mode: string): string => {
     switch (mode) {
@@ -171,7 +86,22 @@ const EmployeeManagementMain = () => {
   const handleFilterSelect = (option: string) => {
     setFilterStatus(option);
     setIsDropdownOpen(false);
+    setCurrentPage(1); // Reset to first page when filtering
   };
+
+  const handleDeleteEmployee = async (employeeId: string) => {
+    if (window.confirm('Are you sure you want to delete this employee?')) {
+      try {
+        await deleteEmployee(employeeId);
+        refetchEmployees(); // Refresh the list
+      } catch (error) {
+        console.error('Error deleting employee:', error);
+      }
+    }
+  };
+
+  // Remove the useEffect that was causing unnecessary re-renders
+  // The hooks will automatically refetch when their dependencies change
 
   return (
     <div className="space-y-6 bg-gray-50 min-h-screen">
@@ -191,16 +121,6 @@ const EmployeeManagementMain = () => {
               className="w-full pl-4 pr-10 py-3 border border-gray-200 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
             />
             <Search className="absolute right-3 top-3.5 h-4 w-4 text-gray-400" />
-          </div>
-        </div>
-
-        {/* Stats Section */}
-        <div className="text-center">
-          <div className="text-4xl font-bold text-[#FBB906] leading-none mb-1">
-            20
-          </div>
-          <div className="text-sm text-gray-600 font-medium">
-            Total number of staff
           </div>
         </div>
 
@@ -257,7 +177,11 @@ const EmployeeManagementMain = () => {
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">All Employee</h2>
           <div className="text-sm text-gray-600">
-            Showing <span className="font-medium">12</span> per page
+            {pagination ? (
+              <>Showing <span className="font-medium">{pagination.items_per_page}</span> per page</>
+            ) : (
+              <>Loading...</>
+            )}
           </div>
         </div>
 
@@ -279,9 +203,62 @@ const EmployeeManagementMain = () => {
               </tr>
             </thead>
             <tbody>
-              {employees.map((employee) => (
-                <tr key={employee.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="px-3 py-4 text-xs text-gray-900">{employee.id}</td>
+              {isLoading ? (
+                // Skeleton loading rows to maintain table structure
+                Array.from({ length: 5 }).map((_, index) => (
+                  <tr key={`skeleton-${index}`} className="border-b border-gray-50">
+                    <td className="px-3 py-4 text-xs text-gray-900">
+                      <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                    </td>
+                    <td className="px-3 py-4 text-xs text-gray-900">
+                      <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                    </td>
+                    <td className="px-3 py-4">
+                      <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                    </td>
+                    <td className="px-3 py-4 text-xs text-gray-900">
+                      <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                    </td>
+                    <td className="px-3 py-4 text-xs text-gray-900">
+                      <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                    </td>
+                    <td className="px-3 py-4 text-xs text-gray-900">
+                      <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                    </td>
+                    <td className="px-3 py-4 text-xs text-gray-900">
+                      <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                    </td>
+                    <td className="px-3 py-4 text-xs text-gray-900">
+                      <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                    </td>
+                    <td className="px-3 py-4">
+                      <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                    </td>
+                    <td className="px-3 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : employeesError ? (
+                <tr>
+                  <td colSpan={9} className="px-6 py-12 text-center text-red-500">
+                    Error loading employees: {employeesError}
+                  </td>
+                </tr>
+              ) : displayEmployees.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                    No employees found
+                  </td>
+                </tr>
+              ) : (
+                displayEmployees.map((employee, index) => (
+                  <tr key={employee._id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                    <td className="px-3 py-4 text-xs text-gray-900">{index + 1 + (currentPage - 1) * 10}</td>
                   <td className="px-3 py-4 text-xs text-gray-900">{employee.name}</td>
                   <td className="px-3 py-4">
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-md ${getWorkModeColor(employee.workMode)}`}>
@@ -290,8 +267,8 @@ const EmployeeManagementMain = () => {
                   </td>
                   <td className="px-3 py-4 text-xs text-gray-900">{employee.gender}</td>
                   <td className="px-3 py-4 text-xs text-gray-900">{employee.staffId}</td>
-                  <td className="px-3 py-4 text-xs text-gray-900">{employee.phone}</td>
-                  <td className="px-3 py-4 text-xs text-gray-900">{employee.systemRole}</td>
+                    <td className="px-3 py-4 text-xs text-gray-900">{employee.phoneNumber}</td>
+                    <td className="px-3 py-4 text-xs text-gray-900">{employee.role}</td>
                   <td className="px-3 py-4 text-xs text-gray-900">{employee.jobTitle}</td>
                   <td className="px-3 py-4">
                     <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(employee.status)}`}>
@@ -301,92 +278,85 @@ const EmployeeManagementMain = () => {
                   <td className="px-3 py-4">
                     <div className="flex items-center gap-2">
                       <a 
-                        href="/dashboard/super-admin/team-space/profile-detail" 
+                          href={`/dashboard/super-admin/team-space/profile-detail?employeeId=${employee._id}`}
                         className="p-2 text-pink-500 bg-gray-50 rounded-md hover:bg-pink-500 hover:text-white transition-colors"
                       >
                         <Eye className="h-3.5 w-3.5" />
                       </a>
                       <a 
-                        href="/dashboard/super-admin/team-space/add-employee" 
+                          href={`/dashboard/super-admin/team-space/add-employee?edit=${employee._id}`}
                         className="p-2 text-pink-500 bg-gray-50 rounded-md hover:bg-pink-500 hover:text-white transition-colors"
                       >
                         <Edit className="h-3.5 w-3.5" />
                       </a>
-                      <a 
-                        href="#" 
+                        <button 
+                          onClick={() => handleDeleteEmployee(employee._id)}
                         className="p-2 text-pink-500 bg-gray-50 rounded-md hover:bg-pink-500 hover:text-white transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                      </a>
+                        </button>
                     </div>
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
+        {pagination && pagination.total_pages > 1 && (
         <div className="px-6 py-4 border-t border-gray-100">
           <div className="flex justify-center gap-2">
+              {/* Previous button */}
             <button 
-              onClick={() => setCurrentPage(1)}
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="w-9 h-9 rounded-md border bg-white text-gray-600 border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+              >
+                ‹
+            </button>
+              
+              {/* Page numbers */}
+              {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                const pageNum = i + 1;
+                return (
+            <button 
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
               className={`w-9 h-9 rounded-md border text-sm font-medium transition-colors ${
-                currentPage === 1 
+                      currentPage === pageNum
                   ? 'bg-gradient-to-r from-pink-500 to-pink-400 text-white border-pink-500' 
                   : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
               }`}
             >
-              1
+                    {pageNum}
             </button>
+                );
+              })}
+              
+              {/* Next button */}
             <button 
-              onClick={() => setCurrentPage(2)}
-              className={`w-9 h-9 rounded-md border text-sm font-medium transition-colors ${
-                currentPage === 2 
-                  ? 'bg-gradient-to-r from-pink-500 to-pink-400 text-white border-pink-500' 
-                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              2
-            </button>
-            <button 
-              onClick={() => setCurrentPage(3)}
-              className={`w-9 h-9 rounded-md border text-sm font-medium transition-colors ${
-                currentPage === 3 
-                  ? 'bg-gradient-to-r from-pink-500 to-pink-400 text-white border-pink-500' 
-                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              3
-            </button>
-            <button 
-              onClick={() => setCurrentPage(4)}
-              className={`w-9 h-9 rounded-md border text-sm font-medium transition-colors ${
-                currentPage === 4 
-                  ? 'bg-gradient-to-r from-pink-500 to-pink-400 text-white border-pink-500' 
-                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              4
-            </button>
-            <button 
-              onClick={() => setCurrentPage(5)}
-              className={`w-9 h-9 rounded-md border text-sm font-medium transition-colors ${
-                currentPage === 5 
-                  ? 'bg-gradient-to-r from-pink-500 to-pink-400 text-white border-pink-500' 
-                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              5
-            </button>
-            <button className="w-9 h-9 rounded-md border bg-white text-gray-600 border-gray-200 hover:bg-gray-50 text-sm font-medium transition-colors">
-              ››
+                onClick={() => setCurrentPage(Math.min(pagination.total_pages, currentPage + 1))}
+                disabled={currentPage === pagination.total_pages}
+                className="w-9 h-9 rounded-md border bg-white text-gray-600 border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+              >
+                ›
             </button>
           </div>
         </div>
+        )}
       </div>
     </div>
   );
 };
 
-export default EmployeeManagementMain;
+const EmployeeManagementPage = () => {
+  return (
+    <ProtectedRoute requiredRoles={['Super Admin', 'Admin']}>
+      <EmployeeManagementMain />
+    </ProtectedRoute>
+  );
+};
+
+export default EmployeeManagementPage;

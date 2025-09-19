@@ -11,9 +11,16 @@ import {
   Calculator,
   Package,
   MessageSquare,
-  Wrench
+  Wrench,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { useDashboardAnalytics, formatCurrency, formatPercentage, getTimeAgo } from './hooks/useAnalytics';
+import { useAuth } from '../../../hooks/useAuth';
+import { branchesApi } from '../../../api/branchesApi';
+import ProtectedRoute from '../../../components/ProtectedRoute';
+
 
 interface StatCard {
   title: string;
@@ -46,62 +53,94 @@ interface AppUsage {
 
 const DashboardPage = () => {
   const [selectedBranch, setSelectedBranch] = useState("All Branches");
+  const [branches, setBranches] = useState<any[]>([]);
+  const [branchesLoading, setBranchesLoading] = useState(true);
+  const [branchesError, setBranchesError] = useState<string | null>(null);
+  const { user } = useAuth();
+  
+  // Fetch branches
+  React.useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        setBranchesLoading(true);
+        setBranchesError(null);
+        const response = await branchesApi.getBranches();
+        if (response.data && response.data.branches) {
+          setBranches(response.data.branches);
+        } else {
+          setBranchesError('Failed to load branches');
+        }
+      } catch (error) {
+        setBranchesError('Error loading branches');
+        console.error('Error fetching branches:', error);
+      } finally {
+        setBranchesLoading(false);
+      }
+    };
 
-  const statsData: StatCard[] = [
+    fetchBranches();
+  }, []);
+  
+  // Fetch analytics data
+  const { data: analyticsData, loading, error } = useDashboardAnalytics({
+    branch: selectedBranch === "All Branches" ? undefined : selectedBranch,
+    days: 7
+  });
+
+  // Transform API data to component format
+  const statsData: StatCard[] = analyticsData ? [
     {
       title: 'Total Staffs',
-      value: 20,
+      value: analyticsData.totalStaff,
       icon: <Users className="w-6 h-6" />,
-      change: '2 Staffs resigned',
+      change: '2 Staffs resigned', // This would need to be calculated from historical data
       changeType: 'negative',
       bgColor: 'bg-blue-100',
       iconColor: 'text-blue-600'
     },
     {
       title: 'Total Sales',
-      value: '₦689,000',
+      value: formatCurrency(analyticsData.dailySales.revenue),
       icon: <TrendingUp className="w-6 h-6" />,
-      change: '↗ 1.8% than previous day',
+      change: '↗ 1.8% than previous day', // This would need to be calculated from historical data
       changeType: 'positive',
       bgColor: 'bg-green-100',
       iconColor: 'text-green-600'
     },
     {
       title: 'Transferred Items',
-      value: 10,
+      value: analyticsData.dailyTransfers.count,
       icon: <ArrowRightLeft className="w-6 h-6" />,
-      change: '↘ 4.3% from yesterday',
+      change: '↘ 4.3% from yesterday', // This would need to be calculated from historical data
       changeType: 'negative',
       bgColor: 'bg-green-100',
       iconColor: 'text-green-600'
     },
     {
       title: 'Completed repairs',
-      value: 30,
+      value: analyticsData.completedRepairs,
       icon: <CheckCircle className="w-6 h-6" />,
-      change: '↘ 8.3% from last week',
+      change: '↘ 8.3% from last week', // This would need to be calculated from historical data
       changeType: 'negative',
       bgColor: 'bg-green-100',
       iconColor: 'text-green-600'
     }
-  ];
+  ] : [];
 
-  const chartData: ChartData[] = [
-    { name: 'Mon', activeUsers: 300, tasksCompleted: 150, internalMessages: 80 },
-    { name: 'Tue', activeUsers: 380, tasksCompleted: 200, internalMessages: 120 },
-    { name: 'Wed', activeUsers: 420, tasksCompleted: 250, internalMessages: 140 },
-    { name: 'Thu', activeUsers: 450, tasksCompleted: 220, internalMessages: 160 },
-    { name: 'Fri', activeUsers: 480, tasksCompleted: 280, internalMessages: 180 },
-    { name: 'Sat', activeUsers: 500, tasksCompleted: 300, internalMessages: 200 }
-  ];
+  // Transform chart data from API
+  const chartData: ChartData[] = analyticsData?.lineGraphData.dailyBreakdown.map(item => ({
+    name: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }),
+    activeUsers: item.activeUsers,
+    tasksCompleted: item.completedTasks,
+    internalMessages: item.internalMessages
+  })) || [];
 
-  const recentActivities: Activity[] = [
-    { user: 'Semiu', action: 'completed a repair ticket.', timestamp: '2 minutes ago' },
-    { user: 'Chineye', action: 'made a sale.', timestamp: '5 minutes ago' },
-    { user: 'Margret', action: 'updated the inventory.', timestamp: '10 minutes ago' },
-    { user: 'Nifemi', action: 'completed her task.', timestamp: '2 days ago' },
-    { user: 'Samad', action: 'submitted a request.', timestamp: '2 days ago' }
-  ];
+  // Transform recent activities from API
+  const recentActivities: Activity[] = analyticsData?.recentActivityLogs.map(log => ({
+    user: `${log.created_by.firstName} ${log.created_by.lastName}`,
+    action: `${log.activity_type} - ${log.product_id.itemName}`,
+    timestamp: getTimeAgo(log.activity_date)
+  })) || [];
 
   const mostUsedApps: AppUsage[] = [
     { name: 'Accounting', icon: <Calculator className="w-8 h-8 text-pink-500" />, route: '/dashboard/super-admin/accounting' },
@@ -110,14 +149,40 @@ const DashboardPage = () => {
     { name: 'Repair tracking', icon: <Wrench className="w-8 h-8 text-pink-500" />, route: '/dashboard/super-admin/repair-tracking' }
   ];
 
-  return (
-    <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Hello Samuel</h1>
-          <p className="text-gray-600">Here is an overview of your administrative system.</p>
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#E866B7]" />
+          <p className="text-gray-600">Loading dashboard analytics...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <AlertCircle className="w-8 h-8 mx-auto mb-4 text-red-500" />
+          <p className="text-red-600 mb-4">Failed to load analytics data</p>
+          <p className="text-gray-600 text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ProtectedRoute requiredRoles={['admin', 'Super Admin']}>
+      <div className="space-y-6">
+        {/* Header Section */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Hello {user?.name || 'User'}</h1>
+            <p className="text-gray-600">Here is an overview of your administrative system.</p>
+          </div>
 
         {/* Branch Dropdown */}
         <div className="flex items-center gap-2">
@@ -126,12 +191,21 @@ const DashboardPage = () => {
             value={selectedBranch}
             onChange={(e) => setSelectedBranch(e.target.value)}
             className="border rounded px-3 py-1.5 text-sm bg-white text-[#FBB906]"
+            disabled={branchesLoading}
           >
             <option>All Branches</option>
-            <option>Gbagada</option>
-            <option>Ikeja</option>
-            <option>Lekki</option>
+            {branches.map((branch) => (
+              <option key={branch._id} value={branch.name}>
+                {branch.name}
+              </option>
+            ))}
           </select>
+          {branchesLoading && (
+            <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+          )}
+          {branchesError && (
+            <span className="text-xs text-red-500">{branchesError}</span>
+          )}
         </div>
       </div>
 
@@ -229,7 +303,8 @@ const DashboardPage = () => {
           ))}
         </div>
       </div>
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 };
 
