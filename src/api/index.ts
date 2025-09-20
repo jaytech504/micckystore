@@ -21,9 +21,6 @@ export { loyaltyApi } from './loyaltyApi';
 export { swappedItemsApi } from './swappedItemsApi';
 export { systemFeaturesApi } from './systemFeaturesApi';
 export { customersApi } from './customersApi';
-export { branchesApi } from './branchesApi';
-export { invoicesApi } from './invoicesApi';
-export { superAdminApi } from './superAdminApi';
 export { productSalesApi } from './productSalesApi';
 
 
