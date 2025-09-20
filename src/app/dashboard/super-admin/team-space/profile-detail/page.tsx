@@ -113,6 +113,10 @@ export default function EmployeePage() {
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Joining Date</h3>
                 <p className="text-sm text-gray-900">July 10, 2024</p>
               </div>
+              <div className="border-b border-gray-100">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Salary</h3>
+                <p className="text-sm text-gray-900">₦200,000</p>
+              </div>
               <div className="md:col-span-2">
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Office Location</h3>
                 <p className="text-sm text-gray-900">54, Diya Street, Ifako Gbagada Lagos</p>

@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import React, { useState } from 'react';
-import { Search, Plus, Download, AlertTriangle } from 'lucide-react';
+import { Plus, Download, AlertTriangle } from 'lucide-react';
+import { frontdeskApi } from '../../../../../api/frontdeskApi';
 
 const NewItemForm = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -15,9 +16,11 @@ const NewItemForm = () => {
     sellingPrice: '',
     purchaseDescription: '',
     salesDescription: '',
-    tax: '7.5% (Automated)',
+  tax: '7.5% (Automated)',
     profit: '',
     supplier: '',
+  productImages: '',
+  sellingTax: '',
     branches: {
       gbagada: { opening: '', closing: '' },
       ikeja: { opening: '', closing: '' },
@@ -46,6 +49,78 @@ const NewItemForm = () => {
     setShowCancelModal(true);
   };
 
+  const [loading, setLoading] = useState(false);
+
+  // productImages input is a comma-separated list of URLs
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      // build payload according to provided schema
+      type ProductPayload = {
+        itemName: string;
+        quantity: number;
+        productImages: string[];
+        category: string;
+        imeiSku: string;
+        costPrice: number;
+        purchaseDescription: string;
+        tax: number;
+        profit: string;
+        sellingPrice: number;
+        sellingDescription: string;
+        sellingTax: number;
+        vendor: string;
+        stockLocation: Array<{ branch: string; openingQuantity: number; closingQuantity: number }>;
+      };
+
+      const payload: ProductPayload = {
+        itemName: formData.itemName,
+        quantity: Number(formData.quantity) || 0,
+        productImages: (formData.productImages || '')
+          .split(',')
+          .map((s: string) => s.trim())
+          .filter((s: string) => s),
+        category: formData.category,
+        imeiSku: formData.imeiSku,
+        costPrice: Number(formData.costPrice) || 0,
+        purchaseDescription: formData.purchaseDescription,
+        tax: parseFloat(String(formData.tax).replace('%', '')) || 0,
+        profit: formData.profit,
+        sellingPrice: Number(formData.sellingPrice) || 0,
+        sellingDescription: formData.salesDescription,
+        sellingTax: Number(formData.sellingTax) || 0,
+        vendor: formData.supplier,
+        stockLocation: [
+          {
+            branch: 'gbagada',
+            openingQuantity: Number(formData.branches.gbagada.opening) || 0,
+            closingQuantity: Number(formData.branches.gbagada.closing) || 0
+          },
+          {
+            branch: 'ikeja',
+            openingQuantity: Number(formData.branches.ikeja.opening) || 0,
+            closingQuantity: Number(formData.branches.ikeja.closing) || 0
+          },
+          {
+            branch: 'lekki',
+            openingQuantity: Number(formData.branches.lekki.opening) || 0,
+            closingQuantity: Number(formData.branches.lekki.closing) || 0
+          }
+        ]
+      };
+
+  await frontdeskApi.createProduct(payload);
+  // redirect back to inventory list (or to created product details if id available)
+  window.location.href = '/dashboard/front-desk/inventory';
+    } catch (err) {
+      console.error(err);
+      alert('Failed to create product. See console for details.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLeaveAndDiscard = () => {
     setFormData({
       itemName: '',
@@ -56,9 +131,11 @@ const NewItemForm = () => {
       sellingPrice: '',
       purchaseDescription: '',
       salesDescription: '',
-      tax: '7.5% (Automated)',
+  tax: '7.5% (Automated)',
       profit: '',
       supplier: '',
+  productImages: '',
+  sellingTax: '',
       branches: {
         gbagada: { opening: '', closing: '' },
         ikeja: { opening: '', closing: '' },
@@ -79,16 +156,16 @@ const NewItemForm = () => {
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
             <Link
-            href="/dashboard/front-desk/sales"
-            className="bg-[#E866B7] text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
-          >
-            <Plus className="w-4 h-4" />
-            New Reciept
-          </Link>
-          <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 text-sm">
-            <Download className="h-4 w-4" />
-            Download Report
-          </button>
+              href="/dashboard/front-desk/sales"
+              className="bg-[#E866B7] text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+            >
+              <Plus className="w-4 h-4" />
+              New Reciept
+            </Link>
+            <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 text-sm">
+              <Download className="h-4 w-4" />
+              Download Report
+            </button>
           </div>
         </div>
 
@@ -231,9 +308,10 @@ const NewItemForm = () => {
                   </label>
                   <input
                     type="text"
-                    placeholder="Selling Price (Automated)"
-                    readOnly
-                    className="w-full px-3 py-2 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    placeholder="Selling Price"
+                    value={formData.sellingPrice}
+                    onChange={(e) => handleInputChange('sellingPrice', e.target.value)}
+                    className="w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                   />
                 </div>
                 
@@ -257,6 +335,16 @@ const NewItemForm = () => {
                     type="text"
                     value={formData.supplier}
                     onChange={(e) => handleInputChange('supplier', e.target.value)}
+                    className="w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Selling Tax (%)</label>
+                  <input
+                    type="text"
+                    placeholder="5"
+                    value={formData.sellingTax}
+                    onChange={(e) => handleInputChange('sellingTax', e.target.value)}
                     className="w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                   />
                 </div>
@@ -334,8 +422,12 @@ const NewItemForm = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-4">
-            <button className="bg-pink-500 hover:bg-pink-400 text-white px-6 py-2 rounded-lg transition-colors">
-              Save
+            <button
+              onClick={handleSave}
+              disabled={loading}
+              className={`bg-pink-500 hover:bg-pink-400 text-white px-6 py-2 rounded-lg transition-colors ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+            >
+              {loading ? 'Saving...' : 'Save'}
             </button>
             <button 
               onClick={handleCancel}

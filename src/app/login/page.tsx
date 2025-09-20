@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+// authService removed - dev token helpers disabled
 
 const LoginPage = () => {
   const router = useRouter();
@@ -23,6 +24,7 @@ const LoginPage = () => {
   const handleForgotPassword = () => {
     router.push('/email-verification');
   };
+
 
   const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -50,6 +52,17 @@ const LoginPage = () => {
 
     // Get login response data
     const loginData = await loginRes.json();
+    
+    // Store the authentication token
+    const token = loginData.token || loginData.accessToken || loginData.authToken || loginData.data?.token;
+    if (token) {
+      // Token received from API; in production tokens should be stored securely on the server side or via secure cookies.
+      console.log('Token received from login response (not stored client-side in this build)');
+    } else {
+      console.warn('No token found in login response. Available fields:', Object.keys(loginData));
+      // For debugging - log the full response structure
+      console.log('Full login response:', loginData);
+    }
     
     // Check if user needs password change
     if (loginData.needsPasswordChange === 'true') {
@@ -196,6 +209,9 @@ const LoginPage = () => {
                   Forgot Password?
                 </button>
               </div>
+
+              {/* Debug Button - Remove this in production */}
+              {/* Debug button removed for production */}
             </form>
           </div>
         </div>

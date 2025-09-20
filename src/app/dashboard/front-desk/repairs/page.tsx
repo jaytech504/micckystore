@@ -1,8 +1,41 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, ChevronDown, X, Download, Plus } from 'lucide-react';
+import { frontdeskApi } from '../../../../api/frontdeskApi';
+
+// API response interfaces
+interface RepairApi {
+  _id: string;
+  ticketId: string;
+  device: string;
+  issueReported: string;
+  diagnosis: string;
+  imei: string;
+  assignedEngineer: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    staffId: string;
+  };
+  status: 'Pending' | 'In progress' | 'Repaired' | 'Repaired and sent back' | 'Completed' | 'Completed and ready for pick up';
+  priorityLevel: string;
+  customerName: string;
+  customerPhoneNumber: string;
+  customerEmail: string;
+  customerAddress: string;
+  expectedCompletionDate: string;
+  price: string;
+  createdBy: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    staffId: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface RepairLog {
   ticketId: string;
@@ -22,86 +55,82 @@ interface RepairLog {
 
 
 const RepairTrackingPage = () => {
+  // Helper to extract arrays from unknown API responses
+  const extractArray = <T,>(data: unknown, key?: string): T[] => {
+    if (!data) return [];
+    if (key && typeof data === 'object' && data !== null && key in (data as Record<string, unknown>)) {
+      const maybe = (data as Record<string, unknown>)[key];
+      return Array.isArray(maybe) ? (maybe as T[]) : [];
+    }
+    return Array.isArray(data) ? (data as T[]) : [];
+  };
   const [selectedTicket, setSelectedTicket] = useState<RepairLog | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [repairLogs, setRepairLogs] = useState<RepairLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('');
 
-  const repairLogs: RepairLog[] = [
-    {
-      ticketId: 'MSR-8249001',
-      device: 'iPhone 13pro 64gb',
-      issue: 'Not turning on',
-      branch: 'Ikeja',
-      engineerAssigned: 'Semiu',
-      tagDate: '24/04/2025',
-      dueDate: '29/04/2025',
-      status: 'In Progress',
-      customerName: 'Testify Olokor',
-      phoneNumber: '0802 063 1277',
-      serialIMEI: '843848428238',
-      expectedCompletionDate: '28/04/2025',
-      diagnosis: 'Not responding'
-    },
-    {
-      ticketId: 'MSR-8249001',
-      device: 'iPhone 13pro',
-      issue: 'Not turning on',
-      branch: 'Ikeja',
-      engineerAssigned: 'Osas',
-      tagDate: '24/04/2025',
-      dueDate: '29/04/2025',
-      status: 'Completed'
-    },
-    {
-      ticketId: 'MSR-8249001',
-      device: 'iPhone 13pro',
-      issue: 'Not turning on',
-      branch: 'Ikeja',
-      engineerAssigned: 'Semiu',
-      tagDate: '24/04/2025',
-      dueDate: '29/04/2025',
-      status: 'In Progress'
-    },
-    {
-      ticketId: 'MSR-8249001',
-      device: 'iPhone 13pro',
-      issue: 'Not turning on',
-      branch: 'Ikeja',
-      engineerAssigned: 'Semiu',
-      tagDate: '24/04/2025',
-      dueDate: '29/04/2025',
-      status: 'Completed'
-    },
-    {
-      ticketId: 'MSR-8249001',
-      device: 'iPhone 13pro',
-      issue: 'Not turning on',
-      branch: 'Ikeja',
-      engineerAssigned: 'Semiu',
-      tagDate: '24/04/2025',
-      dueDate: '29/04/2025',
-      status: 'Returned'
-    },
-    {
-      ticketId: 'MSR-8249001',
-      device: 'iPhone 13pro',
-      issue: 'Not turning on',
-      branch: 'Ikeja',
-      engineerAssigned: 'Semiu',
-      tagDate: '24/04/2025',
-      dueDate: '29/04/2025',
-      status: 'Completed'
-    },
-    {
-      ticketId: 'MSR-8249001',
-      device: 'iPhone 13pro',
-      issue: 'Not turning on',
-      branch: 'Ikeja',
-      engineerAssigned: 'Semiu',
-      tagDate: '24/04/2025',
-      dueDate: '29/04/2025',
-      status: 'In Progress'
+  const fetchRepairs = useCallback(async (status?: string) => {
+    try {
+      setLoading(true);
+      
+  // Removed dev-only auth check; allow fetch and let backend enforce auth if required.
+
+  const response = await frontdeskApi.getRepairs({ status });
+  const data: unknown = response?.data;
+  const repairs = extractArray<RepairApi>(data, 'repairs');
+      
+      // Transform API data to match existing interface
+      const transformedRepairs: RepairLog[] = repairs.map((repair: RepairApi) => ({
+        ticketId: repair.ticketId,
+        device: repair.device,
+        issue: repair.issueReported,
+        branch: 'Ikeja', // Default branch - could be enhanced with actual branch data
+        engineerAssigned: `${repair.assignedEngineer?.firstName || ''} ${repair.assignedEngineer?.lastName || ''}`.trim() || 'Unassigned',
+        tagDate: new Date(repair.createdAt).toLocaleDateString(),
+        dueDate: repair.expectedCompletionDate ? new Date(repair.expectedCompletionDate).toLocaleDateString() : 'N/A',
+        status: mapApiStatusToDisplayStatus(repair.status),
+        customerName: repair.customerName,
+        phoneNumber: repair.customerPhoneNumber,
+        serialIMEI: repair.imei,
+        expectedCompletionDate: repair.expectedCompletionDate ? new Date(repair.expectedCompletionDate).toLocaleDateString() : 'N/A',
+        diagnosis: repair.diagnosis
+      }));
+      
+      setRepairLogs(transformedRepairs);
+      setError(null);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load repairs';
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        setError('Authentication failed. Please login again.');
+      } else {
+        setError(errorMessage);
+      }
+      setRepairLogs([]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  }, []);
+
+  useEffect(() => {
+    fetchRepairs(statusFilter);
+  }, [fetchRepairs, statusFilter]);
+
+  const mapApiStatusToDisplayStatus = (apiStatus: string): 'In Progress' | 'Completed' | 'Returned' => {
+    switch (apiStatus) {
+      case 'Pending':
+      case 'In progress':
+        return 'In Progress';
+      case 'Completed':
+      case 'Completed and ready for pick up':
+        return 'Completed';
+      case 'Repaired and sent back':
+        return 'Returned';
+      default:
+        return 'In Progress';
+    }
+  };
 
 
 
@@ -165,9 +194,21 @@ const RepairTrackingPage = () => {
                 <Calendar className="w-4 h-4 text-gray-400" />
                 <span className="text-sm text-gray-600">Date</span>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-600">Status</span>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+              <div className="relative">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="appearance-none bg-transparent text-sm text-gray-600 pr-6 focus:outline-none"
+                >
+                  <option value="">All Status</option>
+                  <option value="Pending">Pending</option>
+                  <option value="In progress">In Progress</option>
+                  <option value="Repaired">Repaired</option>
+                  <option value="Repaired and sent back">Repaired and sent back</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Completed and ready for pick up">Completed and ready for pick up</option>
+                </select>
+                <ChevronDown className="absolute right-0 top-0 w-4 h-4 text-gray-400 pointer-events-none" />
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-sm text-gray-600">Engineer</span>
@@ -179,40 +220,64 @@ const RepairTrackingPage = () => {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ticket ID</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issue</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Branch</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Engineer Assigned</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tag Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {repairLogs.map((log, index) => (
-                <tr key={index} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleTicketClick(log)}>
-                  <td className="px-4 py-4">
-                    <span className="text-blue-600 text-xs font-medium">{log.ticketId}</span>
-                  </td>
-                  <td className="px-4 py-4 text-xs text-gray-900">{log.device}</td>
-                  <td className="px-4 py-4 text-xs text-gray-900">{log.issue}</td>
-                  <td className="px-4 py-4 text-xs text-gray-900">{log.branch}</td>
-                  <td className="px-4 py-4 text-xs text-gray-900">{log.engineerAssigned}</td>
-                  <td className="px-4 py-4 text-xs text-gray-900">{log.tagDate}</td>
-                  <td className="px-4 py-4 text-xs text-gray-900">{log.dueDate}</td>
-                  <td className="px-4 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(log.status)}`}>
-                      {log.status}
-                    </span>
-                  </td>
+          {loading ? (
+            <div className="p-8 text-center">
+              <div className="animate-pulse space-y-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            </div>
+          ) : error ? (
+            <div className="p-8 text-center">
+              <p className="text-red-600 mb-4">{error}</p>
+              <button
+                onClick={() => fetchRepairs(statusFilter)}
+                className="px-4 py-2 bg-[#E866B7] text-white rounded-lg hover:bg-pink-600"
+              >
+                Retry
+              </button>
+            </div>
+          ) : repairLogs.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-gray-500">No repairs found</p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ticket ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issue</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Branch</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Engineer Assigned</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tag Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {repairLogs.map((log, index) => (
+                  <tr key={index} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleTicketClick(log)}>
+                    <td className="px-4 py-4">
+                      <span className="text-blue-600 text-xs font-medium">{log.ticketId}</span>
+                    </td>
+                    <td className="px-4 py-4 text-xs text-gray-900">{log.device}</td>
+                    <td className="px-4 py-4 text-xs text-gray-900">{log.issue}</td>
+                    <td className="px-4 py-4 text-xs text-gray-900">{log.branch}</td>
+                    <td className="px-4 py-4 text-xs text-gray-900">{log.engineerAssigned}</td>
+                    <td className="px-4 py-4 text-xs text-gray-900">{log.tagDate}</td>
+                    <td className="px-4 py-4 text-xs text-gray-900">{log.dueDate}</td>
+                    <td className="px-4 py-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(log.status)}`}>
+                        {log.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

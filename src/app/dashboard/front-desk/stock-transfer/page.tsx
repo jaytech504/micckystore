@@ -1,29 +1,117 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Download } from 'lucide-react';
 import { ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { frontdeskApi } from '../../../../api/frontdeskApi';
 
 export default function StockTransferForm() {
+  // Helper: safely extract array from unknown API response
+  const extractArray = <T,>(data: unknown, key?: string): T[] => {
+    if (!data) return [];
+    if (key && typeof data === 'object' && data !== null && key in (data as Record<string, unknown>)) {
+      const maybe = (data as Record<string, unknown>)[key];
+      return Array.isArray(maybe) ? (maybe as T[]) : [];
+    }
+    return Array.isArray(data) ? (data as T[]) : [];
+  };
   const [deviceName, setDeviceName] = useState('');
+  const [productSuggestions, setProductSuggestions] = useState<Array<{ _id: string; itemName?: string; imeiSku?: string }>>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [serialNumber, setSerialNumber] = useState('');
   const [fromBranch, setFromBranch] = useState('');
   const [toBranch, setToBranch] = useState('');
+  const [branches, setBranches] = useState<Array<{ _id: string; name?: string }>>([]);
+  const [productId, setProductId] = useState('');
+  const [quantity, setQuantity] = useState<number>(1);
   const [transferReason, setTransferReason] = useState('');
-  const [transferDate, setTransferDate] = useState('');
+  // transferDate is displayed as an autofill read-only field; no state needed
   const [approval, setApproval] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log('Form submitted');
+    // Basic validation
+    if (!productId) {
+      alert('Please provide a product id');
+      return;
+    }
+    if (!fromBranch || !toBranch) {
+      alert('Please select both from and to branches');
+      return;
+    }
+    if (quantity <= 0) {
+      alert('Quantity must be greater than zero');
+      return;
+    }
+
+    const payload = {
+      product: productId,
+      transfer_from: fromBranch,
+      transfer_to: toBranch,
+      transfer_reason: transferReason,
+      quantity: quantity,
+    };
+
+    frontdeskApi.createProductTransfer(payload)
+      .then(() => {
+        alert('Transfer request created');
+        // reset or redirect as needed
+      })
+      .catch((err: unknown) => {
+        console.error('Failed to create transfer', err);
+        alert('Failed to create transfer request');
+      });
   };
 
   const handleCancel = () => {
     // Handle cancel action
     console.log('Form cancelled');
   };
+
+  useEffect(() => {
+  const loadBranches = async () => {
+      try {
+        const res = await frontdeskApi.getBranches({ limit: 100 });
+  const data: unknown = res?.data;
+  const list = extractArray<{ _id: string; name?: string }>( (data as unknown), 'branches');
+  setBranches(list);
+      } catch (err) {
+        console.error('Failed to load branches', err);
+      }
+    };
+
+    loadBranches();
+  }, []);
+
+  // Debounced product suggestions for deviceName
+  useEffect(() => {
+    if (!deviceName || deviceName.trim().length < 2) {
+      setProductSuggestions([]);
+      return;
+    }
+
+    let mounted = true;
+    const id = setTimeout(async () => {
+      try {
+        setSuggestionsLoading(true);
+  const res = await frontdeskApi.getProducts({ itemName: deviceName, limit: 10 });
+  const data: unknown = res?.data;
+  // API may return { products: [...] } or an array
+  const list = extractArray<{ _id: string; itemName?: string; imeiSku?: string }>(data, 'products');
+  if (mounted) setProductSuggestions(list);
+      } catch (err) {
+        console.error('Failed to fetch product suggestions', err);
+      } finally {
+        if (mounted) setSuggestionsLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      mounted = false;
+      clearTimeout(id);
+    };
+  }, [deviceName]);
 
   return (
     <div className="flex-1 p-6 bg-gray-50 min-h-screen">
@@ -73,13 +161,59 @@ export default function StockTransferForm() {
                 <label htmlFor="deviceName" className="block text-sm font-medium text-red-600 mb-2">
                   Device Name
                 </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    id="deviceName"
+                    value={deviceName}
+                    onChange={(e) => setDeviceName(e.target.value)}
+                    placeholder="Search product by name"
+                    className="w-full px-3 py-2 border text-gray-700 text-sm border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    autoComplete="off"
+                  />
+                  {productSuggestions.length > 0 && (
+                    <ul className="absolute z-10 left-0 right-0 bg-white border border-gray-200 mt-1 rounded-md shadow-lg max-h-56 overflow-auto">
+                      {suggestionsLoading ? (
+                        <li className="p-2 text-sm text-gray-500">Loading...</li>
+                      ) : (
+                        productSuggestions.map((p) => (
+                          <li
+                            key={p._id}
+                            className="p-2 text-sm hover:bg-gray-100 cursor-pointer"
+                            onClick={() => {
+                              setDeviceName(p.itemName ?? p._id);
+                              setProductId(p._id);
+                              setSerialNumber(p.imeiSku ?? '');
+                              setProductSuggestions([]);
+                            }}
+                          >
+                            {p.itemName ?? p._id}{p.imeiSku ? ` — ${p.imeiSku}` : ''}
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  )}
+                </div>
+              </div>
+              <div className="mt-4">
+                <label htmlFor="productId" className="block text-sm font-medium text-gray-700 mb-2">Product ID</label>
                 <input
-                  type="text"
-                  id="deviceName"
-                  value={deviceName}
-                  onChange={(e) => setDeviceName(e.target.value)}
-                  placeholder="Device Name"
+                  id="productId"
+                  value={productId}
+                  onChange={(e) => setProductId(e.target.value)}
+                  placeholder="Enter product id or scan imei"
                   className="w-full px-3 py-2 border text-gray-700 text-sm border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                />
+              </div>
+              <div className="mt-4">
+                <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
+                <input
+                  id="quantity"
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Number(e.target.value))}
+                  min={1}
+                  className="w-32 px-3 py-2 border text-gray-700 text-sm border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                 />
               </div>
             </div>
@@ -122,9 +256,9 @@ export default function StockTransferForm() {
                     className="w-full px-3 py-2 text-gray-700 text-sm border border-gray-300 rounded-md shadow-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                   >
                     <option value="" className="text-gray-400">Select branch</option>
-                    <option value="branch1">Lekki</option>
-                    <option value="branch2">Gbagada</option>
-                    <option value="branch3">Ikeja</option>
+                    {branches.map((b) => (
+                      <option key={b._id} value={b._id}>{b.name ?? b._id}</option>
+                    ))}
                   </select>
                   <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                 </div>
@@ -143,9 +277,9 @@ export default function StockTransferForm() {
                     className="w-full px-3 py-2 text-gray-700 text-sm border border-gray-300 rounded-md shadow-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                   >
                     <option value="" className="text-gray-400">Select branch</option>
-                    <option value="branch1">Lekki</option>
-                    <option value="branch2">Gbagada</option>
-                    <option value="branch3">Ikeja</option>
+                    {branches.map((b) => (
+                      <option key={b._id} value={b._id}>{b.name ?? b._id}</option>
+                    ))}
                   </select>
                   <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                 </div>

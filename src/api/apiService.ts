@@ -13,22 +13,11 @@ const apiService: AxiosInstance = axios.create({
 });
 
 
-apiService.interceptors.request.use(
-  (config) => {
-  
-    const token = typeof window !== 'undefined' 
-      ? localStorage.getItem('authToken') 
-      : null;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+// NOTE: Removed automatic Authorization header injection for production.
+// Dev-only token helpers and localStorage-based auth have been removed to
+// avoid committing tokens to the repository. If your production API requires
+// auth headers, set them from a secure server-side source or via environment
+// injected headers.
 
 
 apiService.interceptors.response.use(
@@ -36,16 +25,18 @@ apiService.interceptors.response.use(
     return response;
   },
   (error) => {
+    console.error('API Error:', {
+      status: error.response?.status,
+      url: error.config?.url,
+      message: error.message
+    });
   
     if (error.response?.status === 401) {
-    
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('authToken');
-        window.location.href = '/login';
-      }
+    console.error('401 Unauthorized - Token may be invalid or expired');
+    // In production, token handling should be performed server-side.
+    console.warn('401 received. Ensure client is authenticated via secure server-side session.');
     }
     
-
     if (!error.response) {
       console.error('Network Error:', error.message);
     }
@@ -56,46 +47,32 @@ apiService.interceptors.response.use(
 
 
 export const api = {
-  get: <T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
+  get: <T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
     apiService.get(url, config),
   
-  post: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
+  post: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
     apiService.post(url, data, config),
   
-  put: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
+  put: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
     apiService.put(url, data, config),
   
-  patch: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
+  patch: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
     apiService.patch(url, data, config),
   
-  delete: <T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
+  delete: <T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
     apiService.delete(url, config),
 };
 
-
+// Minimal authService placeholder - intentionally inert.
+// Keep these methods if other modules import authService; they no-op now.
 export const authService = {
-  setToken: (token: string) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('authToken', token);
-    }
+  setToken: () => {
+    // intentionally no-op; token persistence removed
   },
-  
-  getToken: (): string | null => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('authToken');
-    }
-    return null;
-  },
-  
-  removeToken: () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('authToken');
-    }
-  },
-  
-  isAuthenticated: (): boolean => {
-    return !!authService.getToken();
-  },
+  getToken: () => null as string | null,
+  removeToken: () => {},
+  isAuthenticated: () => false,
+  checkAuthStatus: () => ({ isAuthenticated: false, token: null }),
 };
 
 export default apiService;

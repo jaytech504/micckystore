@@ -34,6 +34,7 @@ interface JobInfo {
   expectedWorkingDays: string;
   resumptionDate: string;
   branchLocation: string;
+  salary: string;
 }
 
 interface AccountAccess {
@@ -76,7 +77,8 @@ const AddNewEmployee = () => {
       jobTitle: '',
       expectedWorkingDays: '',
       resumptionDate: '',
-      branchLocation: ''
+      branchLocation: '',
+      salary: ''
     },
     accountAccess: {
       emailAddress: '',
@@ -365,7 +367,16 @@ const AddNewEmployee = () => {
           <Calendar className="absolute right-3 top-3.5 h-5 w-5 text-[#FBB906] pointer-events-none" />
         </div>
       </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="relative">
+          <InputField
+            label="Salary"
+            value={formData.jobInfo.salary}
+            onChange={(value) => updateJobInfo('salary', value)}
+            type="text"
+          />
 
+        </div>
       <SelectField
         label="Branch Location"
         value={formData.jobInfo.branchLocation}
@@ -373,6 +384,7 @@ const AddNewEmployee = () => {
         options={['Ikeja Branch', 'Lekki Branch', 'Gbagada Branch']}
         placeholder="Select Branch Location"
       />
+      </div>
     </div>
   );
 

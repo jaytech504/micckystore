@@ -1,11 +1,14 @@
-import React from 'react';
+"use client";
+
+import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Plus, Download, Target, Eye, MessageSquare, ShoppingCart, FileText, Receipt, Send, Phone } from 'lucide-react';
 import { DevicePhoneMobileIcon } from '@heroicons/react/16/solid';
+import { frontdeskApi } from '../../../api/frontdeskApi';
 
 type Activity = {
-  id: number;
+  id: number | string;
   type: string;
   title: string;
   time: string;
@@ -14,7 +17,7 @@ type Activity = {
 };
 
 type MessageItem = {
-  id: number;
+  id: number | string;
   sender: string;
   avatar: string;
   message: string;
@@ -35,86 +38,130 @@ type Order = {
   badges: string[];
 };
 
+// API payload shapes (best-effort, tolerant to partials)
+interface ChatSummary {
+  id?: number | string;
+  participantName?: string;
+  name?: string;
+  title?: string;
+  participantAvatar?: string;
+  lastMessage?: { content?: string } | string;
+  lastMessageAt?: string;
+  updatedAt?: string;
+  createdAt?: string;
+  unreadCount?: number;
+}
+
+interface ActivityLogApi {
+  id?: number | string;
+  type?: string;
+  title?: string;
+  message?: string;
+  createdAt?: string;
+  time?: string;
+}
+
+interface RepairTicket {
+  id?: number | string;
+  status?: string;
+}
+
+function normalizeArray<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) return payload as T[];
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    Array.isArray((payload as { data?: unknown[] }).data)
+  ) {
+    return ((payload as { data?: unknown[] }).data || []) as T[];
+  }
+  return [] as T[];
+}
+
 export default function DashboardMain(): React.ReactElement {
-  const messages: MessageItem[] = [
-    {
-      id: 1,
-      sender: 'Semiu',
-      avatar: 'SM',
-      message: 'Chineye, that iPhone 15, the customer will need to change the battery',
-      time: 'just now',
-      isNew: true
-    },
-    {
-      id: 2,
-      sender: 'Nifemi',
-      avatar: '/api/placeholder/32/32',
-      message: 'I sent an order since, you never create receipt for am',
-      time: '15 min ago',
-      isNew: true
-    },
-    {
-      id: 3,
-      sender: 'Mr Michael',
-      avatar: '/api/placeholder/32/32',
-      message: 'Check your task bos',
-      time: '1 hour ago',
-      isNew: false
-    },
-    {
-      id: 4,
-      sender: 'Samuel',
-      avatar: 'CA',
-      message: 'Watsup, your account should be working now',
-      time: '2 hours ago',
-      isNew: false
-    }
-  ];
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [repairs, setRepairs] = useState<RepairTicket[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  const recentActivities: Activity[] = [
-    {
-      id: 1,
-      type: 'message',
-      title: 'Responded to message from Samuel Monday',
-      time: '5 min ago',
-      icon: MessageSquare,
-      color: 'text-green-500'
-    },
-    {
-      id: 2,
-      type: 'chat',
-      title: 'Completed Chat with Kyode',
-      time: '12 min ago',
-      icon: MessageSquare,
-  color: 'text-pink-500'
-    },
-    {
-      id: 3,
-      type: 'invoice',
-      title: 'Invoice #Inv-2024-001 sent to Voya tech',
-      time: '25 min ago',
-      icon: FileText,
-      color: 'text-red-500'
-    },
-    {
-      id: 4,
-      type: 'order',
-      title: 'Order #12345 processed and shipped',
-      time: '1 hour ago',
-      icon: ShoppingCart,
-      color: 'text-blue-500'
-    },
-    {
-      id: 5,
-      type: 'order',
-      title: 'Order #12345 processed and shipped',
-      time: '1 hour ago',
-      icon: ShoppingCart,
-      color: 'text-blue-500'
-    }
-  ];
+  useEffect(() => {
+    let isMounted = true;
 
-  // Sample orders data and helper functions to avoid implicit any errors
+    const fetchAll = async () => {
+      try {
+        setLoading(true);
+        const [chatsRes, unreadRes, activityRes, repairsRes] = await Promise.all([
+          frontdeskApi.getChats({ limit: 10 }),
+          frontdeskApi.getUnreadMessageCount(),
+          frontdeskApi.getActivityLogs({ limit: 10 }),
+          frontdeskApi.getRepairs({ status: 'in-progress', limit: 50 }),
+        ]);
+
+        if (!isMounted) return;
+
+        const chats = normalizeArray<ChatSummary>(chatsRes.data);
+        const mappedMessages: MessageItem[] = chats.map((c: ChatSummary, idx: number) => ({
+          id: c.id ?? idx,
+          sender: c.participantName || c.name || c.title || 'Chat',
+          avatar: c.participantAvatar || 'SM',
+          message:
+            typeof c.lastMessage === 'string'
+              ? c.lastMessage
+              : c.lastMessage?.content || 'No messages yet',
+          time: formatRelativeTime(c.lastMessageAt || c.updatedAt || c.createdAt),
+          isNew: !!c.unreadCount,
+        }));
+
+        const unread = unreadRes.data as { count?: number } | number;
+        const unreadNumber = typeof unread === 'number' ? unread : (unread?.count ?? 0);
+
+        const logs = normalizeArray<ActivityLogApi>(activityRes.data);
+        const mappedActivities: Activity[] = logs.map((log: ActivityLogApi, idx: number) => ({
+          id: log.id ?? idx,
+          type: log.type || 'activity',
+          title: log.title || log.message || 'Activity',
+          time: formatRelativeTime(log.createdAt || log.time),
+          icon: resolveIcon(log.type),
+          color: resolveColor(log.type),
+        }));
+
+        const repairsList = normalizeArray<RepairTicket>(repairsRes.data);
+
+        setMessages(mappedMessages);
+        setUnreadCount(Number(unreadNumber) || 0);
+        setRecentActivities(mappedActivities);
+        setRepairs(repairsList);
+      } catch {
+        // non-fatal; keep placeholders
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchAll();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const ongoingRepairsCount = useMemo(() => {
+    if (!Array.isArray(repairs)) return 0;
+    const inProgress = repairs.filter((r: RepairTicket) =>
+      typeof r?.status === 'string' ? r.status.toLowerCase().includes('progress') : false
+    );
+    return inProgress.length || repairs.length || 0;
+  }, [repairs]);
+
+  const pendingApprovalCount = useMemo(() => {
+    if (!Array.isArray(repairs)) return 0;
+    const pending = repairs.filter((r: RepairTicket) =>
+      typeof r?.status === 'string' ? r.status.toLowerCase().includes('pending') : false
+    );
+    return pending.length || 0;
+  }, [repairs]);
+
   const orders: Order[] = [
     {
       id: 1,
@@ -182,7 +229,6 @@ export default function DashboardMain(): React.ReactElement {
   };
 
   const getActionButton = (action: string | undefined, status: Order['status']): React.ReactElement => {
-    // Use status to determine primary action label/tooltip
     if (action === 'ready') {
       return (
         <button className="bg-[#E866B7] text-white px-3 py-2 rounded text-sm">{status === 'ready' ? 'Mark as delivered' : 'Mark as delivered'}</button>
@@ -252,13 +298,13 @@ export default function DashboardMain(): React.ReactElement {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 text-sm">Ongoing repairs</span>
-                <span className=" text-gray-700 font-semibold">5</span>
+                <span className=" text-gray-700 font-semibold">{loading ? '...' : ongoingRepairsCount}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 text-sm">Pending Approval</span>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <span className="font-semibold text-gray-700">1</span>
+                  <span className="font-semibold text-gray-700">{loading ? '...' : pendingApprovalCount}</span>
                 </div>
               </div>
               <button className="w-full bg-pink-400 hover:bg-pink-500 text-white text-sm font-medium py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
@@ -306,41 +352,47 @@ export default function DashboardMain(): React.ReactElement {
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900">In house messages</h3>
                   <span className="bg-red-500 text-white text-xs font-medium px-2 py-1 rounded-sm">
-                    2 new
+                    {loading ? '...' : `${unreadCount} new`}
                   </span>
                 </div>
               </div>
               <div className="p-0">
-                {messages.map((message, index) => (
-                  <div key={message.id} className="p-6 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors relative">
-                    <div className="flex gap-4">
-                      <div className="flex-shrink-0">
-                        <div className="absolute left-6 w-0.5 h-12 bg-yellow-400"></div>
-                        {message.avatar.includes('/') ? (
-                          <Image
-                            src={message.avatar}
-                            alt={message.sender}
-                            width={40}
-                            height={40}
-                            className="w-10 h-10 rounded-full object-cover ml-3"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 ml-3 bg-gray-200 rounded-full flex items-center justify-center text-sm font-medium text-gray-600">
-                            {message.avatar}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-1">
-                          <p className="text-sm font-semibold text-gray-900">{message.sender}</p>
-                          <span className="text-xs text-gray-500">{message.time}</span>
+                {(loading ? [0,1,2] : messages).map((item, index) => {
+                  const isLoading = loading;
+                  const message = isLoading ? undefined : (item as MessageItem);
+                  return (
+                    <div key={message?.id ?? index} className="p-6 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors relative">
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0">
+                          <div className="absolute left-6 w-0.5 h-12 bg-yellow-400"></div>
+                          {isLoading ? (
+                            <div className="w-10 h-10 ml-3 bg-gray-200 rounded-full animate-pulse" />
+                          ) : message?.avatar?.includes('/') ? (
+                            <Image
+                              src={message.avatar}
+                              alt={message.sender}
+                              width={40}
+                              height={40}
+                              className="w-10 h-10 rounded-full object-cover ml-3"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 ml-3 bg-gray-200 rounded-full flex items-center justify-center text-sm font-medium text-gray-600">
+                              {message?.avatar || 'SM'}
+                            </div>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-600 leading-relaxed">{message.message}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between mb-1">
+                            <p className="text-sm font-semibold text-gray-900">{isLoading ? 'Loading...' : message?.sender}</p>
+                            <span className="text-xs text-gray-500">{isLoading ? '' : message?.time}</span>
+                          </div>
+                          <p className="text-sm text-gray-600 leading-relaxed">{isLoading ? 'Please wait...' : message?.message}</p>
+                        </div>
                       </div>
+                    
                     </div>
-      
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -350,24 +402,31 @@ export default function DashboardMain(): React.ReactElement {
                 <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
               </div>
               <div className="p-0">
-                {recentActivities.map((activity) => {
-                  const IconComponent = activity.icon;
+                {(loading ? [0,1,2,3] : recentActivities).map((item, idx) => {
+                  const isLoading = loading;
+                  const activity = isLoading ? undefined : (item as Activity);
+                  const IconComponent = isLoading ? MessageSquare : activity!.icon;
+                  const colorClass = isLoading ? 'text-gray-300' : activity!.color;
+                  const bgClass = isLoading
+                    ? 'bg-gray-100'
+                    : activity!.color === 'text-green-500'
+                      ? 'bg-green-100'
+                      : activity!.color === 'text-pink-500'
+                        ? 'bg-pink-100'
+                        : activity!.color === 'text-red-500'
+                          ? 'bg-red-100'
+                          : 'bg-blue-100';
                   return (
-                    <div key={activity.id} className="p-6 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors">
+                    <div key={(activity?.id as string | number) ?? idx} className="p-6 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors">
                       <div className="flex gap-4">
                         <div className="flex-shrink-0">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            activity.color === 'text-green-500' ? 'bg-green-100' :
-                            activity.color === 'text-pink-500' ? 'bg-pink-100' :
-                            activity.color === 'text-red-500' ? 'bg-red-100' :
-                            'bg-blue-100'
-                          }`}>
-                            <IconComponent size={18} className={activity.color} />
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${bgClass}`}>
+                            <IconComponent size={18} className={colorClass} />
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-900 mb-1">{activity.title}</p>
-                          <span className="text-xs text-gray-500">{activity.time}</span>
+                          <p className="text-sm text-gray-900 mb-1">{isLoading ? 'Loading activity...' : activity!.title}</p>
+                          <span className="text-xs text-gray-500">{isLoading ? '' : activity!.time}</span>
                         </div>
                       </div>
                     </div>
@@ -437,4 +496,36 @@ export default function DashboardMain(): React.ReactElement {
       </div>
     </div>
   );
+}
+
+function resolveIcon(type?: string) {
+  const t = (type || '').toLowerCase();
+  if (t.includes('message') || t.includes('chat')) return MessageSquare;
+  if (t.includes('order') || t.includes('sale')) return ShoppingCart;
+  if (t.includes('invoice') || t.includes('receipt')) return FileText;
+  if (t.includes('call') || t.includes('phone')) return Phone;
+  return MessageSquare;
+}
+
+function resolveColor(type?: string) {
+  const t = (type || '').toLowerCase();
+  if (t.includes('message') || t.includes('chat')) return 'text-green-500';
+  if (t.includes('invoice') || t.includes('receipt')) return 'text-red-500';
+  if (t.includes('order') || t.includes('sale')) return 'text-blue-500';
+  return 'text-pink-500';
+}
+
+function formatRelativeTime(dateLike?: string) {
+  if (!dateLike) return '';
+  const date = new Date(dateLike);
+  if (Number.isNaN(date.getTime())) return '';
+  const diffMs = Date.now() - date.getTime();
+  const sec = Math.floor(diffMs / 1000);
+  if (sec < 60) return 'just now';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} hour${hr === 1 ? '' : 's'} ago`;
+  const day = Math.floor(hr / 24);
+  return `${day} day${day === 1 ? '' : 's'} ago`;
 }

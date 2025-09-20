@@ -1,10 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { frontdeskApi } from '../../../../../api/frontdeskApi';
 
 export default function RepairRequestForm() {
-  const [activeTab, setActiveTab] = useState('new-repair');
+  // Helper to safely extract arrays from API responses
+  const extractArray = <T,>(data: unknown, key?: string): T[] => {
+    if (!data) return [];
+    if (key && typeof data === 'object' && data !== null && key in (data as Record<string, unknown>)) {
+      const maybe = (data as Record<string, unknown>)[key];
+      return Array.isArray(maybe) ? (maybe as T[]) : [];
+    }
+    return Array.isArray(data) ? (data as T[]) : [];
+  };
+  // const [activeTab, setActiveTab] = useState('new-repair');
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
@@ -12,14 +22,57 @@ export default function RepairRequestForm() {
   const [deviceName, setDeviceName] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
   const [tagEngineer, setTagEngineer] = useState('');
+  const [engineers, setEngineers] = useState<Array<{ _id: string; firstName?: string; lastName?: string }>>([]);
   const [priorityLevel, setPriorityLevel] = useState('');
   const [diagnosisNotes, setDiagnosisNotes] = useState('');
   const [estimatedDate, setEstimatedDate] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted');
+    setLoading(true);
+    try {
+      const payload = {
+        device: deviceName,
+        issueReported: fault,
+        diagnosis: diagnosisNotes,
+        imei: serialNumber,
+        assignedEngineer: tagEngineer,
+        priorityLevel: priorityLevel,
+        customerName: fullName,
+        customerPhoneNumber: phoneNumber,
+        customerEmail: email,
+        customerAddress: '',
+        expectedCompletionDate: estimatedDate,
+        price: ''
+      };
+
+      await frontdeskApi.createRepair(payload);
+      // redirect to repairs list after successful creation
+      window.location.href = '/dashboard/front-desk/repairs';
+    } catch (err) {
+      console.error('Failed to create repair', err);
+      alert('Failed to create repair ticket. See console for details.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    const fetchEngineers = async () => {
+      try {
+  const res = await frontdeskApi.getUsers({ role: 'Engineer', limit: 100 });
+  const data: unknown = res?.data;
+  const list = extractArray<{ _id: string; firstName?: string; lastName?: string }>(data, 'users');
+  setEngineers(list);
+      } catch (err) {
+        console.error('Failed to load engineers', err);
+      }
+    };
+
+    fetchEngineers();
+  }, []);
 
   const handleCancel = () => {
     console.log('Form cancelled');
@@ -176,9 +229,11 @@ export default function RepairRequestForm() {
                     className="w-full px-3 py-3 text-gray-700 text-sm border border-gray-300 rounded-md shadow-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                   >
                     <option value="" className="text-gray-400">Select Engineer</option>
-                    <option value="engineer1">Engineer 1</option>
-                    <option value="engineer2">Engineer 2</option>
-                    <option value="engineer3">Engineer 3</option>
+                    {engineers.map((eng) => (
+                      <option key={eng._id} value={eng._id}>
+                        {`${eng.firstName ?? 'Unknown'} ${eng.lastName ?? ''}`.trim()}
+                      </option>
+                    ))}
                   </select>
                   <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                 </div>
@@ -256,9 +311,10 @@ export default function RepairRequestForm() {
           <div className="flex flex-col sm:flex-row gap-4 justify-start">
             <button
               type="submit"
-              className="px-7 py-2.5 bg-[#E866B7] text-white font-medium rounded-lg hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transition-colors"
+              disabled={loading}
+              className={`px-7 py-2.5 bg-[#E866B7] text-white font-medium rounded-lg hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transition-colors ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
-              Submit Request
+              {loading ? 'Creating...' : 'Submit Request'}
             </button>
             <button
               type="button"

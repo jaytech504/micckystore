@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useState } from 'react';
-import { Search, Download, Calendar, ChevronDown, Plus, Image as ImageIcon, MoreHorizontal, User } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Search, Download, Calendar, ChevronDown, Plus, Image as ImageIcon, MoreHorizontal } from 'lucide-react';
+import { frontdeskApi } from '../../../../api/frontdeskApi';
 
 interface Customer {
   id: string;
@@ -12,11 +13,11 @@ interface Customer {
   color: string;
 }
 
-interface Product {
+interface ProductOption {
   id: string;
   name: string;
-  price: number;
-  stock: number;
+  costPrice?: number;
+  stock?: number;
 }
 
 interface LineItem {
@@ -28,21 +29,28 @@ interface LineItem {
   discount: number;
   tax: number;
   amount: number;
+  productId?: string;
 }
 
-const customers: Customer[] = [
-  { id: '1', name: 'Samuel Monday', email: 'Samuelmonday857@gmail.com', initials: 'S', color: 'bg-orange-400' },
-  { id: '2', name: 'Amanda Samson', email: 'Amandasamson.23@gmail.com', initials: 'A', color: 'bg-orange-400' },
-  { id: '3', name: 'Michael', email: 'Michael12857@gmail.com', initials: 'M', color: 'bg-orange-400' },
-  { id: '4', name: 'Nifemi', email: 'Nifemem7@gmail.com', initials: 'N', color: 'bg-orange-400' },
-];
+// API response shapes (best-effort)
+interface CustomerApi {
+  id?: string;
+  name?: string;
+  email?: string;
+  loyaltyId?: string;
+}
 
-const products: Product[] = [
-  { id: '1', name: 'Product Name', price: 57769.00, stock: 5 },
-  { id: '2', name: 'Product Name', price: 20000.00, stock: 1 },
-  { id: '3', name: 'Product Name', price: 100000.00, stock: 2 },
-  { id: '4', name: 'Product Name', price: 0, stock: 0 },
-];
+interface LoyaltyDiscountApi {
+  id?: string;
+  discount?: number;
+}
+
+interface ProductApi {
+  id?: string;
+  itemName?: string;
+  costPrice?: number;
+  stock?: number;
+}
 
 export default function NewSalesReceipt() {
   const [activeTab, setActiveTab] = useState<'sales' | 'swap'>('sales');
@@ -50,9 +58,8 @@ export default function NewSalesReceipt() {
   const [customerNumber, setCustomerNumber] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [showProductDropdown, setShowProductDropdown] = useState<string | null>(null);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [date, setDate] = useState('17/03/2025');
-  const [loyaltyId, setLoyaltyId] = useState('LY-123963');
+  const [loyaltyId, setLoyaltyId] = useState('');
   const [branch, setBranch] = useState('Gbagada');
   const [salesReceipt, setSalesReceipt] = useState('S-R/709743');
   const [salesperson, setSalesperson] = useState('Chineye');
@@ -103,20 +110,88 @@ export default function NewSalesReceipt() {
     }
   ]);
 
-  const [loyaltyDiscount] = useState(6000);
-  const [subTotal] = useState(1500000000);
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState<number>(0);
   const [deliveryFee, setDeliveryFee] = useState(5000.00);
-  const [total] = useState(1505000000);
   const [customerNote, setCustomerNote] = useState('');
   const [paymentMode, setPaymentMode] = useState('');
   const [bank, setBank] = useState('');
   const [reference, setReference] = useState('');
   const [branchSold, setBranchSold] = useState('');
 
-  const handleCustomerSelect = (customer: Customer) => {
-    setSelectedCustomer(customer);
+  // API-driven state
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customersLoading, setCustomersLoading] = useState(false);
+
+  const [products, setProducts] = useState<ProductOption[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  const normalizeArray = useCallback(function normalizeArray<T>(payload: unknown): T[] {
+    if (Array.isArray(payload)) return payload as T[];
+    if (payload && typeof payload === 'object' && Array.isArray((payload as { data?: unknown[] }).data)) {
+      return ((payload as { data?: unknown[] }).data || []) as T[];
+    }
+    return [] as T[];
+  }, []);
+
+  const fetchCustomers = useCallback(async (query: string) => {
+    try {
+      setCustomersLoading(true);
+      const res = await frontdeskApi.getCustomers({ search: query, limit: 10 });
+      const arr = normalizeArray<CustomerApi>(res.data);
+      const mapped: Customer[] = arr.map((c, idx) => ({
+        id: c.id || String(idx),
+        name: c.name || 'Unknown',
+        email: c.email || '',
+        initials: (c.name || 'U').charAt(0).toUpperCase(),
+        color: 'bg-orange-400',
+      }));
+      setCustomers(mapped);
+    } catch {
+      setCustomers([]);
+    } finally {
+      setCustomersLoading(false);
+    }
+  }, [normalizeArray]);
+
+  const fetchProducts = useCallback(async (params: { itemName?: string; costPrice?: number }) => {
+    try {
+      setProductsLoading(true);
+      const res = await frontdeskApi.getProducts(params);
+      const arr = normalizeArray<ProductApi>(res.data);
+      const mapped: ProductOption[] = arr.map((p, idx) => ({
+        id: p.id || String(idx),
+        name: p.itemName || 'Product',
+        costPrice: p.costPrice ?? 0,
+        stock: p.stock ?? 0,
+      }));
+      setProducts(mapped);
+    } catch {
+      setProducts([]);
+    } finally {
+      setProductsLoading(false);
+    }
+  }, [normalizeArray]);
+
+  useEffect(() => {
+    fetchCustomers('');
+    fetchProducts({});
+  }, [fetchCustomers, fetchProducts]);
+
+  const handleCustomerSelect = async (customer: Customer) => {
     setCustomerName(customer.name);
     setShowCustomerDropdown(false);
+
+    try {
+      const res = await frontdeskApi.getLoyaltyDiscountById(customer.id);
+      const data = (res.data || {}) as LoyaltyDiscountApi;
+      setLoyaltyId(data.id || '');
+      setLoyaltyDiscount(Number(data.discount || 0));
+    } catch {
+      setLoyaltyId('');
+      setLoyaltyDiscount(0);
+    }
   };
 
   const addNewItem = () => {
@@ -138,7 +213,88 @@ export default function NewSalesReceipt() {
     }
   };
 
-  const currentItems = activeTab === 'sales' ? lineItems : swapItems;
+  const currentItems = useMemo(() => (activeTab === 'sales' ? lineItems : swapItems), [activeTab, lineItems, swapItems]);
+
+  const handleCustomerNameChange = (value: string) => {
+    setCustomerName(value);
+    setShowCustomerDropdown(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchCustomers(value);
+    }, 300);
+  };
+
+  const handleSelectProductForItem = (lineId: string, product: ProductOption) => {
+    const update = (items: LineItem[]): LineItem[] =>
+      items.map((li) =>
+        li.id === lineId
+          ? {
+              ...li,
+              productId: product.id,
+              description: product.name,
+              price: Number(product.costPrice || 0),
+              amount: Number(product.costPrice || 0) * (li.quantity || 0),
+            }
+          : li
+      );
+
+    if (activeTab === 'sales') setLineItems(update);
+    else setSwapItems(update);
+
+    setShowProductDropdown(null);
+  };
+
+  const subTotal = useMemo(() => {
+    const items = activeTab === 'sales' ? lineItems : swapItems;
+    return items.reduce((sum, li) => sum + (li.amount || 0), 0);
+  }, [activeTab, lineItems, swapItems]);
+
+  const total = useMemo(() => {
+    return Math.max(0, subTotal - loyaltyDiscount) + (deliveryFee || 0);
+  }, [subTotal, loyaltyDiscount, deliveryFee]);
+
+  const handleSubmit = async () => {
+    const emailReceipt: string[] = [];
+
+    const mapItemsToPayload = (items: LineItem) => ({
+      product_id: items.productId || '',
+      quantity: items.quantity || 0,
+    });
+
+    const payload: Record<string, unknown> = {
+      customer_name: customerName,
+      customer_phone_number: customerNumber,
+      customer_address: '',
+      loyalty_id: loyaltyId || undefined,
+      branch: branchSold || branch,
+      sales_type: activeTab === 'swap' ? 'swap' : 'sales',
+      seller_item:
+        activeTab === 'swap'
+          ? swapItems.slice(0, 1).map(mapItemsToPayload)
+          : lineItems.map(mapItemsToPayload),
+      buyer_item:
+        activeTab === 'swap' ? swapItems.slice(1, 2).map(mapItemsToPayload) : [],
+      customer_note: customerNote,
+      delivery_fee: deliveryFee,
+      payment_mode: paymentMode || undefined,
+      bank: bank || undefined,
+      reference: reference || undefined,
+      email_receipt: emailReceipt,
+      points: 0,
+      delivery_status: undefined,
+    };
+
+    try {
+      const res = await frontdeskApi.createProductSale(payload);
+      if (res.status >= 200 && res.status < 300) {
+        alert('Sale saved successfully');
+      } else {
+        alert('Failed to save sale');
+      }
+    } catch {
+      alert('Failed to save sale');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -181,10 +337,7 @@ export default function NewSalesReceipt() {
                   type="text"
                   placeholder="Enter customer's name"
                   value={customerName}
-                  onChange={(e) => {
-                    setCustomerName(e.target.value);
-                    setShowCustomerDropdown(true);
-                  }}
+                  onChange={(e) => handleCustomerNameChange(e.target.value)}
                   onFocus={() => setShowCustomerDropdown(true)}
                   onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 200)}
                   className="w-full px-3 py-2 text-gray-800 text-sm pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
@@ -193,7 +346,7 @@ export default function NewSalesReceipt() {
                 
                 {showCustomerDropdown && (
                   <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
-                    {customers.map((customer, index) => (
+                    {(customersLoading ? [] : customers).map((customer, index) => (
                       <div
                         key={customer.id}
                         onClick={() => handleCustomerSelect(customer)}
@@ -355,7 +508,7 @@ export default function NewSalesReceipt() {
                 </tr>
               </thead>
               <tbody>
-                {currentItems.map((item, index) => (
+                {currentItems.map((item) => (
                   <React.Fragment key={item.id}>
                     <tr className="border-b">
                       <td className="p-3 border-r border-gray-200">
@@ -365,7 +518,10 @@ export default function NewSalesReceipt() {
                           </div>
                           {item.description === 'Type or click to select an Item' ? (
                             <button
-                              onClick={() => setShowProductDropdown(item.id)}
+                              onClick={async () => {
+                                setShowProductDropdown(item.id);
+                                if (!products.length) await fetchProducts({});
+                              }}
                               className="flex-1 text-left px-3 py-2 border border-gray-300 rounded hover:bg-gray-50 text-gray-500"
                             >
                               {item.description}
@@ -410,25 +566,22 @@ export default function NewSalesReceipt() {
                       <tr>
                         <td colSpan={7} className="p-0">
                           <div className="bg-white border border-gray-300 rounded-lg shadow-lg mx-3 mb-3">
-                            {products.map((product, productIndex) => (
+                            {(productsLoading ? [] : products).map((product, productIndex) => (
                               <div
                                 key={product.id}
-                                onClick={() => {
-                                  setShowProductDropdown(null);
-                                  // Handle product selection here
-                                }}
+                                onClick={() => handleSelectProductForItem(item.id, product)}
                                 className={`flex justify-between items-center p-3 hover:bg-gray-50 cursor-pointer ${
                                   productIndex === 0 ? 'bg-yellow-400 text-white' : ''
                                 } ${productIndex < products.length - 1 ? 'border-b border-gray-200' : ''}`}
                               >
                                 <div>
-                                  <div className="font-medium text-sm text-gray-600">Product Name</div>
-                                  <div className="text-sm text-gray-600">Price: {product.price.toLocaleString()}</div>
+                                  <div className="font-medium text-sm text-gray-600">{product.name}</div>
+                                  <div className="text-sm text-gray-600">Price: {(product.costPrice || 0).toLocaleString()}</div>
                                 </div>
                                 <div className="text-right">
                                   <div className="text-sm text-gray-600">Available Stock</div>
-                                  <div className={`text-sm font-medium ${product.stock > 3 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {product.stock} pcs
+                                  <div className={`text-sm font-medium ${(product.stock || 0) > 3 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {product.stock || 0} pcs
                                   </div>
                                 </div>
                               </div>
@@ -558,10 +711,10 @@ export default function NewSalesReceipt() {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <button className="bg-[#E866B7] hover:bg-pink-400 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+          <button onClick={handleSubmit} className="bg-[#E866B7] hover:bg-pink-400 text-white px-6 py-3 rounded-lg font-medium transition-colors">
             Save
           </button>
-          <button className="bg-[#E866B7] hover:bg-pink-400 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+          <button onClick={handleSubmit} className="bg-[#E866B7] hover:bg-pink-400 text-white px-6 py-3 rounded-lg font-medium transition-colors">
             Save and Print
           </button>
         </div>
