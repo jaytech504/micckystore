@@ -13,13 +13,6 @@ const apiService: AxiosInstance = axios.create({
 });
 
 
-// NOTE: Removed automatic Authorization header injection for production.
-// Dev-only token helpers and localStorage-based auth have been removed to
-// avoid committing tokens to the repository. If your production API requires
-// auth headers, set them from a secure server-side source or via environment
-// injected headers.
-
-
 apiService.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
