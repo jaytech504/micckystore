@@ -1,148 +1,94 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useState } from 'react';
-import { Search, Plus, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Plus, Download, Filter, ChevronLeft, ChevronRight, Loader2, AlertCircle, X } from 'lucide-react';
+import { useProductSales } from '../../../../hooks/useProductSales';
+import { useBranches } from '../../../../hooks/useBranches';
 
-interface Receipt {
-  id: string;
-  date: string;
-  paymentMode: string;
-  receiptNumber: string;
-  status: 'Paid' | 'Pending' | 'Overdue';
-  customerName: string;
-  branch: string;
-  amount: string;
-  salesperson: string;
-}
-
-const receipts: Receipt[] = [
-  {
-    id: '1',
-    date: '3/8/2025',
-    paymentMode: 'Bank Transfer',
-    receiptNumber: 'S-R/709743',
-    status: 'Paid',
-    customerName: 'Samuel Monday',
-    branch: 'Gbagada',
-    amount: 'NGN2,000,000',
-    salesperson: 'Chineye'
-  },
-  {
-    id: '2',
-    date: '3/8/2025',
-    paymentMode: 'Bank Transfer',
-    receiptNumber: 'S-R/709743',
-    status: 'Paid',
-    customerName: 'Samuel Monday',
-    branch: 'Lekki',
-    amount: 'NGN2,000,000',
-    salesperson: 'Margret'
-  },
-  {
-    id: '3',
-    date: '3/8/2025',
-    paymentMode: 'Bank Transfer',
-    receiptNumber: 'S-R/709743',
-    status: 'Paid',
-    customerName: 'Samuel Monday',
-    branch: 'Ikeja',
-    amount: 'NGN2,000,000',
-    salesperson: 'Margret'
-  },
-  {
-    id: '4',
-    date: '3/8/2025',
-    paymentMode: 'Bank Transfer',
-    receiptNumber: 'S-R/709743',
-    status: 'Paid',
-    customerName: 'Samuel Monday',
-    branch: 'Ikeja',
-    amount: 'NGN2,000,000',
-    salesperson: 'Samuel'
-  },
-  {
-    id: '5',
-    date: '3/8/2025',
-    paymentMode: 'Bank Transfer',
-    receiptNumber: 'S-R/709743',
-    status: 'Paid',
-    customerName: 'Samuel Monday',
-    branch: 'Gbagada',
-    amount: 'NGN2,000,000',
-    salesperson: 'Michael'
-  },
-  {
-    id: '6',
-    date: '3/8/2025',
-    paymentMode: 'Bank Transfer',
-    receiptNumber: 'S-R/709743',
-    status: 'Paid',
-    customerName: 'Samuel Monday',
-    branch: 'Lekki',
-    amount: 'NGN2,000,000',
-    salesperson: 'Dennis'
-  },
-  {
-    id: '7',
-    date: '3/8/2025',
-    paymentMode: 'Bank Transfer',
-    receiptNumber: 'S-R/709743',
-    status: 'Paid',
-    customerName: 'Samuel Monday',
-    branch: 'Ikeja',
-    amount: 'NGN2,000,000',
-    salesperson: 'Chineye'
-  },
-  {
-    id: '8',
-    date: '3/8/2025',
-    paymentMode: 'Bank Transfer',
-    receiptNumber: 'S-R/709743',
-    status: 'Paid',
-    customerName: 'Samuel Monday',
-    branch: 'Gbagada',
-    amount: 'NGN2,000,000',
-    salesperson: 'Dennis'
-  },
-  {
-    id: '9',
-    date: '3/8/2025',
-    paymentMode: 'Bank Transfer',
-    receiptNumber: 'S-R/709743',
-    status: 'Paid',
-    customerName: 'Samuel Monday',
-    branch: 'Ikeja',
-    amount: 'NGN2,000,000',
-    salesperson: 'Tina'
-  },
-  {
-    id: '10',
-    date: '3/8/2025',
-    paymentMode: 'Bank Transfer',
-    receiptNumber: 'S-R/709743',
-    status: 'Paid',
-    customerName: 'Samuel Monday',
-    branch: 'Gbagada',
-    amount: 'NGN2,000,000',
-    salesperson: 'Dennis'
-  },
-  {
-    id: '11',
-    date: '3/8/2025',
-    paymentMode: 'Bank Transfer',
-    receiptNumber: 'S-R/709743',
-    status: 'Paid',
-    customerName: 'Samuel Monday',
-    branch: 'Lekki',
-    amount: 'NGN2,000,000',
-    salesperson: 'Chineye'
+// Helper function to calculate total amount for a sale
+const calculateSaleAmount = (sale: any): number => {
+  let total = 0;
+  
+  // Calculate seller items total (what customer is selling to us)
+  if (sale.seller_item && sale.seller_item.length > 0) {
+    total += sale.seller_item.reduce((sum: number, item: any) => sum + (item.price || 0) * item.quantity, 0);
   }
-];
+  
+  // Calculate buyer items total (what customer is buying from us)
+  if (sale.buyer_item && sale.buyer_item.length > 0) {
+    total += sale.buyer_item.reduce((sum: number, item: any) => sum + (item.price || 0) * item.quantity, 0);
+  }
+  
+  // Add delivery fee if applicable
+  if (sale.delivery_fee) {
+    total += sale.delivery_fee;
+  }
+  
+  return total;
+};
+
+// Helper function to get branch name
+const getBranchName = (branchId: string, branches: any[]): string => {
+  const branch = branches.find(b => b._id === branchId);
+  return branch ? branch.name : 'Unknown Branch';
+};
 
 export default function AccountingDashboard() {
   const [selectedReceipts, setSelectedReceipts] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedBranch, setSelectedBranch] = useState('');
+  const [selectedSalesType, setSelectedSalesType] = useState<'sale' | 'swap' | ''>('');
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState<'Bank Transfer' | 'POS' | 'cash' | ''>('');
+  
+  // API hooks
+  const { branches, loading: branchesLoading } = useBranches();
+  const { 
+    sales, 
+    loading: salesLoading, 
+    error: salesError, 
+    pagination, 
+    refetch: refetchSales,
+    clearError: clearSalesError 
+  } = useProductSales({
+    page: currentPage,
+    limit: 10,
+    search: searchTerm || undefined,
+    branch: selectedBranch || undefined,
+    sales_type: selectedSalesType || undefined,
+    payment_mode: selectedPaymentMode || undefined
+  });
+
+  // Handle search with debouncing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCurrentPage(1); // Reset to first page when searching
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Handle pagination
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (filterType: string, value: string) => {
+    switch (filterType) {
+      case 'branch':
+        setSelectedBranch(value);
+        break;
+      case 'sales_type':
+        setSelectedSalesType(value as 'sale' | 'swap' | '');
+        break;
+      case 'payment_mode':
+        setSelectedPaymentMode(value as 'Bank Transfer' | 'POS' | 'cash' | '');
+        break;
+    }
+    setCurrentPage(1); // Reset to first page when filtering
+  };
 
   const toggleReceipt = (id: string) => {
     setSelectedReceipts(prev => 
@@ -154,7 +100,7 @@ export default function AccountingDashboard() {
 
   const toggleAll = () => {
     setSelectedReceipts(prev => 
-      prev.length === receipts.length ? [] : receipts.map(r => r.id)
+      prev.length === sales.length ? [] : sales.map(s => s._id || '')
     );
   };
 
@@ -180,7 +126,9 @@ export default function AccountingDashboard() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-900 w-4 h-4" />
           <input
             type="text"
-            placeholder="Search"
+            placeholder="Search by customer name, phone, or receipt"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-16 py-2.5 text-black border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent"
           />
           <span className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-medium">
@@ -204,23 +152,77 @@ export default function AccountingDashboard() {
         </div>
       </div>
 
+      {/* Error Messages */}
+      {salesError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+            <div className="flex-1">
+              <p className="text-red-800 font-medium">Error Loading Sales Data</p>
+              <p className="text-red-600 text-sm">{salesError}</p>
+            </div>
+            <button
+              onClick={clearSalesError}
+              className="text-red-500 hover:text-red-700"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Products Section */}
       <div className="bg-white rounded-lg shadow-sm">
         {/* Products Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">Products</h2>
           
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Link
               href="/dashboard/accounting/sales/new-receipt"
               className="bg-[#FBB906] hover:bg-yellow-500 text-white px-4 py-2 rounded-lg font-medium transition-colors"
             >
               New Receipt
             </Link>
-            <button className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg transition-colors">
-              <Filter className="h-4 w-4" />
-              Filters
-            </button>
+            
+            {/* Branch Filter */}
+            <select
+              value={selectedBranch}
+              onChange={(e) => handleFilterChange('branch', e.target.value)}
+              className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-[#E866B7]"
+              disabled={branchesLoading}
+            >
+              <option value="">All Branches</option>
+              {branches.map((branch: any) => (
+                <option key={branch._id} value={branch._id}>
+                  {branch.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Sales Type Filter */}
+            <select
+              value={selectedSalesType}
+              onChange={(e) => handleFilterChange('sales_type', e.target.value)}
+              className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-[#E866B7]"
+            >
+              <option value="">All Types</option>
+              <option value="sale">Sale</option>
+              <option value="swap">Swap</option>
+            </select>
+
+            {/* Payment Mode Filter */}
+            <select
+              value={selectedPaymentMode}
+              onChange={(e) => handleFilterChange('payment_mode', e.target.value)}
+              className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-[#E866B7]"
+            >
+              <option value="">All Payment Modes</option>
+              <option value="cash">Cash</option>
+              <option value="POS">POS</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+            </select>
+
             <button className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg transition-colors">
               Download all
             </button>
@@ -235,7 +237,7 @@ export default function AccountingDashboard() {
                 <th className="w-12 p-4">
                   <input
                     type="checkbox"
-                    checked={selectedReceipts.length === receipts.length}
+                    checked={selectedReceipts.length === sales.length && sales.length > 0}
                     onChange={toggleAll}
                     className="rounded border-gray-300 text-pink-600 focus:ring-pink-500"
                   />
@@ -251,50 +253,88 @@ export default function AccountingDashboard() {
               </tr>
             </thead>
             <tbody>
-              {receipts.map((receipt, index) => (
-                <tr key={receipt.id} className={`border-b hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+              {salesLoading ? (
+                <tr>
+                  <td colSpan={9} className="p-8 text-center">
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 animate-spin text-gray-400 mr-2" />
+                      <span className="text-gray-600">Loading sales data...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : sales.length > 0 ? (
+                sales.map((sale, index) => {
+                  const saleAmount = calculateSaleAmount(sale);
+                  const branchName = getBranchName(sale.branch, branches);
+                  const saleDate = sale.createdAt ? new Date(sale.createdAt).toLocaleDateString() : 'N/A';
+                  
+                  return (
+                    <tr key={sale._id} className={`border-b hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
                   <td className="p-4">
                     <input
                       type="checkbox"
-                      checked={selectedReceipts.includes(receipt.id)}
-                      onChange={() => toggleReceipt(receipt.id)}
+                          checked={selectedReceipts.includes(sale._id || '')}
+                          onChange={() => toggleReceipt(sale._id || '')}
                       className="rounded border-gray-300 text-pink-600 focus:ring-pink-500"
                     />
                   </td>
-                  <td className="p-4 text-xs text-gray-900">{receipt.date}</td>
-                  <td className="p-4 text-xs text-gray-900">{receipt.paymentMode}</td>
-                  <td className="p-4 text-xs text-gray-900">{receipt.receiptNumber}</td>
+                      <td className="p-4 text-xs text-gray-900">{saleDate}</td>
+                      <td className="p-4 text-xs text-gray-900">{sale.payment_mode}</td>
+                      <td className="p-4 text-xs text-gray-900">{sale.reference || 'N/A'}</td>
                   <td className="p-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium text-green-700">
-                      {receipt.status}
+                        <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full ${
+                          sale.delivery_status === 'Delivered' ? 'text-green-700 bg-green-100' :
+                          sale.delivery_status === 'In Transit' ? 'text-yellow-700 bg-yellow-100' :
+                          sale.delivery_status === 'Pending' ? 'text-orange-700 bg-orange-100' :
+                          'text-red-700 bg-red-100'
+                        }`}>
+                          {sale.delivery_status || 'Pending'}
                     </span>
+                      </td>
+                      <td className="p-4 text-xs text-gray-900">{sale.customer_name}</td>
+                      <td className="p-4 text-xs text-gray-900">{branchName}</td>
+                      <td className="p-4 text-xs text-gray-900">₦{saleAmount.toLocaleString()}</td>
+                      <td className="p-4 text-xs text-gray-900">{sale.sales_type}</td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={9} className="p-8 text-center text-gray-500">
+                    No sales found
                   </td>
-                  <td className="p-4 text-xs text-gray-900">{receipt.customerName}</td>
-                  <td className="p-4 text-xs text-gray-900">{receipt.branch}</td>
-                  <td className="p-4 text-xs text-gray-900">{receipt.amount}</td>
-                  <td className="p-4 text-xs text-gray-900">{receipt.salesperson}</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
+        {pagination && (
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-6 border-t">
-          <button className="flex items-center gap-2 px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors">
+            <button 
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage <= 1 || salesLoading}
+              className="flex items-center gap-2 px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
             <ChevronLeft className="h-4 w-4" />
             Previous
           </button>
           
           <span className="text-sm text-gray-700">
-            Page 1 of 10
+              Page {pagination.current_page} of {pagination.total_pages} ({pagination.total_items} total items)
           </span>
           
-          <button className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors">
+            <button 
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= pagination.total_pages || salesLoading}
+              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
             Next
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
+        )}
       </div>
     </div>
   );

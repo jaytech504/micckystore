@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
+import ProtectedRoute from '../../../components/ProtectedRoute';
 import {
   LayoutDashboard,
   Receipt,
@@ -36,7 +37,7 @@ interface SidebarLayoutProps {
   children: React.ReactNode;
 }
 
-export default function SidebarLayout({ children }: SidebarLayoutProps) {
+function SidebarLayout({ children }: SidebarLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
@@ -57,11 +58,11 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
     { name: 'Vendor', href: '/dashboard/accounting/vendor', icon: UserCheck },
     { name: 'Reports', href: '/dashboard/accounting/reports', icon: BarChart3 },
     { name: 'Calendar', href: '/dashboard/accounting/calendar', icon: Calendar },
-    { name: 'Messages', href: '/dashboard/accounting/messages', icon: MessageCircle }
+    // { name: 'Messages', href: '/dashboard/accounting/messages', icon: MessageCircle }
   ];
 
   const bottomItems: NavigationItem[] = [
-    { name: 'Settings', href: '/dashboard/accounting/settings', icon: Settings },
+    // { name: 'Settings', href: '/dashboard/accounting/settings', icon: Settings },
     { name: 'Contact Admin', href: '/dashboard/accounting/contact-admin', icon: Shield },
     { name: 'Log Out', href: '/logout', icon: LogOut, isLogout: true }
   ];
@@ -255,11 +256,33 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
       </div>
 
       {/* Main Content Area */}
-      <div className={`flex-1 overflow-hidden ${isMessagesPage ? 'lg:ml-0' : 'lg:ml-0'}`}>
-        <main className={`h-full overflow-y-auto p-4 lg:p-8 ${isMobile ? 'pt-20' : ''}`}>
+      <div className={`flex-1 flex flex-col overflow-hidden ${isMessagesPage ? 'lg:ml-0' : 'lg:ml-0'}`}>
+        <main className={`flex-1 overflow-y-auto p-4 lg:p-8 ${isMobile ? 'pt-20' : ''}`}>
           {children}
         </main>
+        
+        {/* Footer */}
+        <footer className="bg-white border-t border-gray-200 px-4 lg:px-8 py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="text-sm text-gray-500">
+              © 2025 MickkyStore. All rights reserved.
+            </div>
+            <div className="flex items-center gap-6 text-sm text-gray-500">
+              <span>Version 1.0.0</span>
+              <span>•</span>
+              <span>Last updated: {new Date().toLocaleDateString()}</span>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
+  );
+}
+
+export default function AccountingLayout({ children }: SidebarLayoutProps) {
+  return (
+    <ProtectedRoute requiredRoles={['Accounting', 'Super Admin', 'Admin']}>
+      <SidebarLayout>{children}</SidebarLayout>
+    </ProtectedRoute>
   );
 }

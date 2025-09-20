@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-// authService removed - dev token helpers disabled
+import { useAuth } from '../../hooks/useAuth';
 
 const LoginPage = () => {
   const router = useRouter();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,6 +17,7 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -32,8 +34,11 @@ const LoginPage = () => {
   setError('');
   setSuccess('');
 
+  console.log('🚀 Starting login process...');
+
   try {
     // Step 1: Login
+    console.log('📡 Making login request to server...');
     const loginRes = await fetch('https://mickkystore.onrender.com/api/auth/login', {
       method: 'POST',
       headers: {
@@ -45,23 +50,45 @@ const LoginPage = () => {
       }),
     });
 
+    console.log('📡 Login response status:', loginRes.status, loginRes.statusText);
+    
     if (!loginRes.ok) {
       const data = await loginRes.json();
+      console.error('❌ Login failed:', data);
       throw new Error(data?.message || 'Invalid login credentials');
     }
 
     // Get login response data
     const loginData = await loginRes.json();
     
-    // Store the authentication token
-    const token = loginData.token || loginData.accessToken || loginData.authToken || loginData.data?.token;
-    if (token) {
-      // Token received from API; in production tokens should be stored securely on the server side or via secure cookies.
-      console.log('Token received from login response (not stored client-side in this build)');
+    // Log the complete login response
+    console.log('🔐 Login Response:', {
+      success: loginData.success,
+      message: loginData.message,
+      hasToken: !!loginData.token,
+      tokenLength: loginData.token?.length || 0,
+      hasUser: !!loginData.user,
+      user: loginData.user,
+      needsPasswordChange: loginData.needsPasswordChange,
+      fullResponse: loginData
+    });
+    
+    // Store authentication data using the auth hook
+    // Check if we have token and user data (success can be undefined but still valid)
+    if (loginData.token && loginData.user) {
+      console.log('✅ Login data valid, calling login function...');
+      try {
+        login(loginData.token, loginData.user);
+        console.log('✅ Login function completed successfully');
+      } catch (error) {
+        console.error('❌ Error in login function:', error);
+      }
     } else {
-      console.warn('No token found in login response. Available fields:', Object.keys(loginData));
-      // For debugging - log the full response structure
-      console.log('Full login response:', loginData);
+      console.error('❌ Login data invalid:', {
+        success: loginData.success,
+        hasToken: !!loginData.token,
+        hasUser: !!loginData.user
+      });
     }
     
     // Check if user needs password change
@@ -121,6 +148,7 @@ const LoginPage = () => {
     setIsLoading(false);
   }
 };
+
   return (
     <div className="min-h-screen text-black">
       {/* Desktop Layout */}

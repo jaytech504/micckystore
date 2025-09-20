@@ -1,19 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { eventsApi, Event } from '@/api/eventsApi';
 
 const CalendarPage = () => {
-  const [currentDate, setCurrentDate] = useState(new Date(2025, 1, 1)); // February 2025
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'Day' | 'Week' | 'Month'>('Month');
-
-  // Mock events data
-  const events = [
-    { id: 1, title: 'Office meeting', date: 3, type: 'meeting', color: 'bg-blue-100 text-blue-800 border-blue-200' },
-    { id: 2, title: 'Planned event', date: 16, type: 'planned', color: 'bg-purple-100 text-purple-800 border-purple-200' },
-    { id: 3, title: 'Planned event', date: 20, type: 'planned', color: 'bg-orange-100 text-orange-800 border-orange-200' },
-    { id: 4, title: 'Planned event', date: 25, type: 'planned', color: 'bg-blue-100 text-blue-800 border-blue-200' }
-  ];
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
 
   const monthNames = [
@@ -22,6 +18,30 @@ const CalendarPage = () => {
   ];
 
   const daysOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+  // Fetch events for the current month
+  const fetchEvents = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await eventsApi.getEvents({
+        month: currentDate.getMonth() + 1, // API expects 1-12, Date.getMonth() returns 0-11
+        year: currentDate.getFullYear()
+      });
+      setEvents(response.data?.events || []);
+    } catch (err) {
+      console.error('Error fetching events:', err);
+      setError('Failed to load events');
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch events when component mounts or month changes
+  useEffect(() => {
+    fetchEvents();
+  }, [currentDate]);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -78,9 +98,33 @@ const CalendarPage = () => {
     });
   };
 
+  // Helper function to get event color based on event data
+  const getEventColor = (event: Event) => {
+    // You can customize this logic based on your needs
+    const colors = [
+      'bg-blue-100 text-blue-800 border-blue-200',
+      'bg-purple-100 text-purple-800 border-purple-200',
+      'bg-orange-100 text-orange-800 border-orange-200',
+      'bg-green-100 text-green-800 border-green-200',
+      'bg-red-100 text-red-800 border-red-200'
+    ];
+    const index = event.name.length % colors.length;
+    return colors[index];
+  };
+
   const days = getDaysInMonth(currentDate);
   const currentMonthName = monthNames[currentDate.getMonth()];
   const currentYear = currentDate.getFullYear();
+
+  // Helper function to get events for a specific day
+  const getEventsForDay = (day: number) => {
+    return events.filter(event => {
+      const eventDate = new Date(event.date);
+      return eventDate.getDate() === day && 
+             eventDate.getMonth() === currentDate.getMonth() && 
+             eventDate.getFullYear() === currentDate.getFullYear();
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -92,7 +136,10 @@ const CalendarPage = () => {
             <div className="p-4 border-b border-gray-200">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-4">
-                  <button className=" text-sm text-gray-600 hover:text-gray-900">
+                  <button 
+                    onClick={() => setCurrentDate(new Date())}
+                    className="text-sm text-gray-600 hover:text-gray-900"
+                  >
                     Today
                   </button>
                   <div className="flex items-center gap-2">
@@ -135,6 +182,18 @@ const CalendarPage = () => {
 
             {/* Calendar Grid */}
             <div className="p-4">
+              {/* Loading and Error States */}
+              {loading && (
+                <div className="text-center py-4 text-gray-500">
+                  Loading events...
+                </div>
+              )}
+              {error && (
+                <div className="text-center py-4 text-red-500 bg-red-50 rounded-lg mb-4">
+                  {error}
+                </div>
+              )}
+              
               {/* Days of week header */}
               <div className="grid grid-cols-7 gap-1 mb-2">
                 {daysOfWeek.map((day) => (
@@ -147,7 +206,7 @@ const CalendarPage = () => {
               {/* Calendar days */}
               <div className="grid grid-cols-7 gap-1">
                 {days.map((dayInfo, index) => {
-                  const dayEvents = events.filter(event => event.date === dayInfo.day && dayInfo.isCurrentMonth);
+                  const dayEvents = dayInfo.isCurrentMonth ? getEventsForDay(dayInfo.day) : [];
                   
                   return (
                     <div
@@ -164,10 +223,11 @@ const CalendarPage = () => {
                       <div className="space-y-1">
                         {dayEvents.map((event) => (
                           <div
-                            key={event.id}
-                            className={`text-xs px-1 py-0.5 rounded border ${event.color} truncate`}
+                            key={event._id}
+                            className={`text-xs px-1 py-0.5 rounded border ${getEventColor(event)} truncate`}
+                            title={`${event.name} - ${event.time} - ${event.location}`}
                           >
-                            {event.title}
+                            {event.name}
                           </div>
                         ))}
                       </div>

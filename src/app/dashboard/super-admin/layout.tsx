@@ -43,11 +43,11 @@ export default function DashboardLayout({
     { icon: TeamIcon, label: 'Team Space', href: '/dashboard/super-admin/team-space' },
     { icon: FileText, label: 'Audit Logs', href: '/dashboard/super-admin/audit-logs' },
     { icon: Calendar, label: 'Calendar', href: '/dashboard/super-admin/calendar' },
-    { icon: Mail, label: 'Messages', href: '/dashboard/super-admin/messages' },
+    // { icon: Mail, label: 'Messages', href: '/dashboard/super-admin/messages' },
   ];
 
   const preferencesItems = [
-    { icon: Settings, label: 'Settings', href: '/dashboard/super-admin/settings' },
+    // { icon: Settings, label: 'Settings', href: '/dashboard/super-admin/settings' },
     { icon: User, label: 'Contact Admin', href: '/dashboard/super-admin/contact-admin' },
     { icon: LogOut, label: 'Log Out', href: '/logout', textColor: 'text-red-500' },
   ];

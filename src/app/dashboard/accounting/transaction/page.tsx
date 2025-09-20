@@ -3,6 +3,10 @@
 import Link from 'next/link';
 import { Search, ChevronDown, Plus, Download } from 'lucide-react';
 import { useState } from 'react';
+import { useInvoices } from '../../../../hooks/useInvoices';
+import { accountingApi } from '../../../../api/accountingApi';
+import { branchesApi, Branch } from '../../../../api/branchesApi';
+import { useEffect } from 'react';
 
 interface DropdownProps {
   isOpen: boolean;
@@ -11,6 +15,11 @@ interface DropdownProps {
   selected: string;
   onSelect: (option: string) => void;
   placeholder: string;
+}
+
+interface BranchOption {
+  value: string;
+  label: string;
 }
 
 interface Transaction {
@@ -40,15 +49,52 @@ const TransactionsPage = () => {
   const [branchFilterOpen, setBranchFilterOpen] = useState(false);
   const [categoryFilterOpen, setCategoryFilterOpen] = useState(false);
   const [statusFilterOpen, setStatusFilterOpen] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState('Lekki');
+  const [selectedLocation, setSelectedLocation] = useState('All Branches');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All Categories');
+  const [selectedStatus, setSelectedStatus] = useState('All Status');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [transactionsPage, setTransactionsPage] = useState(1);
+  
+  // Transactions API state
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
+  const [transactionsPagination, setTransactionsPagination] = useState<any>(null);
 
-  const locations: string[] = ['Lekki', 'Gbagada', 'Ikeja'];
+  // Branches API state
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branchesLoading, setBranchesLoading] = useState(false);
+  const [branchesError, setBranchesError] = useState<string | null>(null);
+
+  // Invoices API integration
+  const {
+    data: invoices,
+    loading: invoicesLoading,
+    error: invoicesError,
+    pagination: invoicesPagination
+  } = useInvoices({
+    page: currentPage,
+    limit: 10,
+    search: searchTerm || undefined,
+    branch: selectedLocation !== 'All Branches' ? selectedLocation : undefined,
+    status: selectedStatus !== 'All Status' ? selectedStatus.toLowerCase().replace(' ', '_') as any : undefined
+  });
+
+  // Dynamic branch options from API
+  const branchOptions: BranchOption[] = [
+    { value: 'All Branches', label: 'All Branches' },
+    ...branches.map(branch => ({
+      value: branch._id,
+      label: branch.name
+    }))
+  ];
+
   const dateRanges: string[] = ['Today', 'This Week', 'This Month', 'Last Month', 'Custom'];
-  const branches: string[] = ['All Branches', 'Lekki', 'Gbagada', 'Ikeja'];
   const categories: string[] = ['All Categories', 'Repairs', 'Expenses', 'Budget', 'Sales'];
   const statuses: string[] = ['All Status', 'Approved', 'Unpaid', 'Paid', 'Pending'];
 
-  const transactions: Transaction[] = [
+  const mockTransactions: Transaction[] = [
     {
       id: "TXN-10325",
       date: "06-06-2025",
@@ -96,38 +142,65 @@ const TransactionsPage = () => {
     }
   ];
 
-  const invoices: Invoice[] = [
-    {
-      date: "3/8/2025",
-      number: "INV/709743",
-      orderId: "System generated",
-      status: "paid",
-      customer: "Samuel Monday",
-      dueDate: "3/8/2025",
-      balance: "₦GN2,000,000",
-      branch: "Lekki"
-    },
-    {
-      date: "3/8/2025",
-      number: "INV/709743",
-      orderId: "System generated",
-      status: "overdue",
-      customer: "Samuel Monday",
-      dueDate: "3/8/2025",
-      balance: "₦GN2,000,000",
-      branch: "Ikeja"
-    },
-    {
-      date: "3/8/2025",
-      number: "INV/709743",
-      orderId: "System generated",
-      status: "partially-paid",
-      customer: "Samuel Monday",
-      dueDate: "3/8/2025",
-      balance: "₦GN2,000,000",
-      branch: "Gbagada"
+  // Fetch branches
+  const fetchBranches = async () => {
+    setBranchesLoading(true);
+    setBranchesError(null);
+    try {
+      const response = await branchesApi.getBranches({
+        status: 'Active',
+        limit: 100
+      });
+      if (response.data?.branches) {
+        setBranches(response.data.branches);
+      }
+    } catch (err: any) {
+      console.error('Error loading branches:', err);
+      setBranchesError('Failed to load branches');
+    } finally {
+      setBranchesLoading(false);
     }
-  ];
+  };
+
+  // Fetch transactions
+  const fetchTransactions = async () => {
+    setTransactionsLoading(true);
+    setTransactionsError(null);
+    try {
+      const params = {
+        page: transactionsPage,
+        limit: 10,
+        search: searchTerm || undefined,
+        category: selectedCategory !== 'All Categories' ? selectedCategory.toLowerCase() as any : undefined,
+        status: selectedStatus !== 'All Status' ? selectedStatus.toLowerCase() as any : undefined
+      };
+      
+      const response = await accountingApi.getTransactions(params);
+      setTransactions(response.data.data);
+      setTransactionsPagination(response.data.pagination);
+    } catch (err: any) {
+      setTransactionsError(err.message || 'Failed to fetch transactions');
+    } finally {
+      setTransactionsLoading(false);
+    }
+  };
+
+  // Fetch branches on mount
+  useEffect(() => {
+    fetchBranches();
+  }, []);
+
+  // Fetch transactions on mount and when filters change
+  useEffect(() => {
+    fetchTransactions();
+  }, [transactionsPage, searchTerm, selectedCategory, selectedStatus]);
+
+  // Handle search input changes
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to first page when searching
+    setTransactionsPage(1); // Reset transactions page too
+  };
 
   const Dropdown: React.FC<DropdownProps> = ({ isOpen, setIsOpen, options, selected, onSelect, placeholder }) => (
     <div className="relative">
@@ -164,21 +237,23 @@ const TransactionsPage = () => {
         className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:border-gray-300 transition-colors"
       >
         <span className="text-sm text-gray-600">Location:</span>
-        <span className="text-sm text-amber-500 font-medium">{selectedLocation}</span>
+        <span className="text-sm text-amber-500 font-medium">
+          {branchesLoading ? 'Loading...' : selectedLocation}
+        </span>
         <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${locationOpen ? 'rotate-180' : ''}`} />
       </button>
       {locationOpen && (
         <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-full">
-          {locations.map((option) => (
+          {branchOptions.map((option) => (
             <button
-              key={option}
+              key={option.value}
               onClick={() => {
-                setSelectedLocation(option);
+                setSelectedLocation(option.label);
                 setLocationOpen(false);
               }}
               className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg"
             >
-              {option}
+              {option.label}
             </button>
           ))}
         </div>
@@ -219,7 +294,9 @@ const TransactionsPage = () => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-900 w-4 h-4" />
           <input
             type="text"
-            placeholder="Search"
+            placeholder="Search invoices..."
+            value={searchTerm}
+            onChange={handleSearchChange}
             className="w-full pl-10 pr-16 py-2.5 text-black border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent"
           />
           <span className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-medium">
@@ -261,18 +338,27 @@ const TransactionsPage = () => {
         <Dropdown
           isOpen={branchFilterOpen}
           setIsOpen={setBranchFilterOpen}
-          options={branches}
-          selected="Branch"
-          onSelect={(option: string) => console.log('Branch filter:', option)}
-          placeholder="Branch"
+          options={branchOptions.map(branch => branch.label)}
+          selected={branchesLoading ? "Loading..." : "Branch"}
+          onSelect={(option: string) => {
+            const branch = branchOptions.find(b => b.label === option);
+            if (branch && branch.value !== 'All Branches') {
+              // Filter transactions by branch
+              console.log('Branch filter:', branch.value);
+            }
+          }}
+          placeholder={branchesLoading ? "Loading branches..." : "Branch"}
         />
         
         <Dropdown
           isOpen={categoryFilterOpen}
           setIsOpen={setCategoryFilterOpen}
           options={categories}
-          selected="Category"
-          onSelect={(option: string) => console.log('Category filter:', option)}
+          selected={selectedCategory}
+          onSelect={(option: string) => {
+            setSelectedCategory(option);
+            setTransactionsPage(1);
+          }}
           placeholder="Category"
         />
         
@@ -280,8 +366,11 @@ const TransactionsPage = () => {
           isOpen={statusFilterOpen}
           setIsOpen={setStatusFilterOpen}
           options={statuses}
-          selected="Status"
-          onSelect={(option: string) => console.log('Status filter:', option)}
+          selected={selectedStatus}
+          onSelect={(option: string) => {
+            setSelectedStatus(option);
+            setCurrentPage(1);
+          }}
           placeholder="Status"
         />
 
@@ -311,48 +400,72 @@ const TransactionsPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {transactions.map((transaction, index) => (
+              {transactionsLoading ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                    Loading transactions...
+                  </td>
+                </tr>
+              ) : transactionsError ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-red-500">
+                    Error loading transactions: {transactionsError}
+                  </td>
+                </tr>
+              ) : transactions && transactions.length > 0 ? (
+                transactions.map((transaction) => (
                 <Link
-                  key={index}
-                  href={`/dashboard/accounting/transaction/transaction-details`}
+                    key={transaction._id}
+                    href={`/dashboard/accounting/transaction/transaction-details/${transaction._id}`}
                   className="table-row hover:bg-gray-50 transition-colors cursor-pointer"
                 >
                   <td className="px-4 py-4">
                     <span className="text-blue-600 text-sm font-medium">
-                      {transaction.id}
+                        {transaction.transaction_id}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{transaction.date}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900">{new Date(transaction.date).toLocaleDateString()}</td>
                   <td className="px-4 py-4 text-sm text-gray-900 hidden md:table-cell">{transaction.description}</td>
                   <td className="px-4 py-4 text-sm text-gray-900">{transaction.category}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900 hidden lg:table-cell">{transaction.branch}</td>
-                  <td className="px-4 py-4 text-sm font-medium text-gray-900">{transaction.amount}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900 hidden lg:table-cell">{transaction.branch?.name || 'N/A'}</td>
+                    <td className="px-4 py-4 text-sm font-medium text-gray-900">₦{transaction.amount.toLocaleString()}</td>
                   <td className="px-4 py-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getStatusStyles(transaction.status)}`}>
                       {transaction.status.replace('-', ' ')}
                     </span>
                   </td>
                 </Link>
-              ))}
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                    No transactions found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination */}
+        {/* Transactions Pagination */}
         <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-100">
-          <Link
-            href="/transactions?page=prev"
-            className="bg-white border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+          <button
+            onClick={() => setTransactionsPage(prev => Math.max(1, prev - 1))}
+            disabled={transactionsPage === 1}
+            className="bg-white border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Previous
-          </Link>
-          <span className="text-sm text-gray-600">Page 1 of 10</span>
-          <Link
-            href="/transactions?page=next"
-            className="bg-white border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+          </button>
+          <span className="text-sm text-gray-600">
+            Page {transactionsPagination?.current_page || 1} of {transactionsPagination?.total_pages || 1}
+          </span>
+          <button
+            onClick={() => setTransactionsPage(prev => prev + 1)}
+            disabled={transactionsPage >= (transactionsPagination?.total_pages || 1)}
+            className="bg-white border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -378,47 +491,78 @@ const TransactionsPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {invoices.map((invoice, index) => (
+              {invoicesLoading ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
+                    Loading invoices...
+                  </td>
+                </tr>
+              ) : invoicesError ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-8 text-center text-red-500">
+                    Error loading invoices: {invoicesError}
+                  </td>
+                </tr>
+              ) : invoices && invoices.length > 0 ? (
+                invoices.map((invoice) => (
                 <Link
-                  key={index}
-                  href={`/invoices/${invoice.number}`}
+                    key={invoice._id}
+                    href={`/dashboard/accounting/transaction/invoice/${invoice._id}`}
                   className="table-row hover:bg-gray-50 transition-colors cursor-pointer"
                 >
                   <td className="px-4 py-4" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                     <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-blue-600" />
                   </td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{invoice.date}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900">{new Date(invoice.date_of_invoice).toLocaleDateString()}</td>
                   <td className="px-4 py-4">
                     <span className="text-blue-600 text-sm font-medium">
-                      {invoice.number}
+                        {invoice.invoice_receipt}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-sm text-gray-900 hidden md:table-cell">{invoice.orderId}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900 hidden md:table-cell">System generated</td>
                   <td className="px-4 py-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getStatusStyles(invoice.status)}`}>
                       {invoice.status.replace('-', ' ')}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-sm text-gray-900 hidden lg:table-cell">{invoice.customer}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900 hidden xl:table-cell">{invoice.dueDate}</td>
-                  <td className="px-4 py-4 text-sm font-medium text-gray-900">{invoice.balance}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900 hidden lg:table-cell">{invoice.branch}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900 hidden lg:table-cell">{invoice.customer_name}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900 hidden xl:table-cell">{new Date(invoice.due_date).toLocaleDateString()}</td>
+                    <td className="px-4 py-4 text-sm font-medium text-gray-900">₦{(invoice.sub_total + (invoice.delivery_fee || 0)).toLocaleString()}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900 hidden lg:table-cell">{invoice.branch?.name || 'N/A'}</td>
                 </Link>
-              ))}
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
+                    No invoices found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* See More Button */}
-        <div className="p-4 border-t border-gray-100">
-          <Link
-            href="/dashboard/accounting/transaction/invoice"
-            className="float-right bg-gray-50 border border-gray-200 text-gray-600 px-4 py-2 rounded-md text-sm hover:bg-gray-100 transition-colors"
+        {/* Invoice Pagination */}
+        <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-100">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className="bg-white border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            See More
-          </Link>
-          <div className="clear-both"></div>
+            Previous
+          </button>
+          <span className="text-sm text-gray-600">
+            Page {invoicesPagination?.current_page || 1} of {invoicesPagination?.total_pages || 1}
+          </span>
+          <button
+            onClick={() => setCurrentPage(prev => prev + 1)}
+            disabled={currentPage >= (invoicesPagination?.total_pages || 1)}
+            className="bg-white border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
         </div>
+
       </div>
     </div>
   );

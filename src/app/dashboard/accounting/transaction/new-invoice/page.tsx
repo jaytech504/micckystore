@@ -3,28 +3,36 @@
 import Link from 'next/link';
 import React, { useState } from 'react';
 import { Search, ChevronDown, Plus, MoreHorizontal, Printer, Save, FileText, Mail, UserPlus } from 'lucide-react';
+import { useInvoices } from '../../../../../hooks/useInvoices';
 
 export default function NewInvoice() {
   const [formData, setFormData] = useState({
     customerName: '',
     customerNumber: '',
-    dateOfInvoice: '17/03/2025',
-    dueDate: '25/04/2025',
-    branch: 'Gbagada',
-    invoiceReceipt: 'INV700743',
-    invoiceType: 'Sales',
-    salesperson: 'Chineye',
-    deliveryFee: '5,000.00',
-    paymentStatus: '',
+    dateOfInvoice: new Date().toISOString().split('T')[0], // Current date
+    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+    branch: '',
+    invoiceReceipt: `INV${Date.now().toString().slice(-6)}`, // Auto-generate receipt number
+    invoiceType: 'sales' as 'sales' | 'repair' | 'service' | 'rental' | 'consultation',
+    salesperson: '',
+    deliveryFee: '0.00',
+    paymentType: '' as 'pos' | 'cash' | 'bank transfer' | '',
     bank: '',
     reference: '',
-    branchSoldFrom: '',
-    emailRecipient: 'Samuelmonday857@gmail.com'
+    emailRecipient: ''
   });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Invoice API hook
+  const { createInvoice } = useInvoices();
 
   const [items, setItems] = useState([
     {
       id: 1,
+      product_id: '',
       name: '',
       description: '',
       itemSku: '00000',
@@ -33,28 +41,20 @@ export default function NewInvoice() {
       discount: 0,
       tax: 0,
       totalAmount: 0
-    },
-    {
-      id: 2,
-      name: 'GREELION LEATHER CASE IP 15 PRO',
-      description: '',
-      itemSku: '4576479293828',
-      quantity: 4,
-      price: 800000.00,
-      discount: 300000,
-      tax: 50000.00,
-      totalAmount: 1500000.00
     }
   ]);
 
   const [customerNote, setCustomerNote] = useState('');
 
-  const subTotal = '1,500,000.000';
-  const totalWithDelivery = '1,505,000.000';
+  // Calculate totals dynamically
+  const subTotal = items.reduce((sum, item) => sum + (item.totalAmount || 0), 0);
+  const deliveryFee = parseFloat(formData.deliveryFee.replace(/,/g, '')) || 0;
+  const totalWithDelivery = subTotal + deliveryFee;
 
   const addNewItem = () => {
     const newItem = {
       id: items.length + 1,
+      product_id: '',
       name: '',
       description: '',
       itemSku: '00000',
@@ -68,9 +68,106 @@ export default function NewInvoice() {
   };
 
   const updateItem = (id: number, field: string, value: string | number) => {
-    setItems(items.map(item => 
-      item.id === id ? { ...item, [field]: value } : item
-    ));
+    const updatedItems = items.map(item => {
+      if (item.id === id) {
+        const updatedItem = { ...item, [field]: value };
+        
+        // Recalculate total amount when quantity or price changes
+        if (field === 'quantity' || field === 'price') {
+          const quantity = field === 'quantity' ? Number(value) : updatedItem.quantity;
+          const price = field === 'price' ? Number(value) : updatedItem.price;
+          updatedItem.totalAmount = quantity * price - (updatedItem.discount || 0) + (updatedItem.tax || 0);
+        }
+        
+        return updatedItem;
+      }
+      return item;
+    });
+    
+    setItems(updatedItems);
+  };
+
+  // Form validation
+  const validateForm = () => {
+    const errors: string[] = [];
+    
+    if (!formData.customerName.trim()) errors.push('Customer name is required');
+    if (!formData.customerNumber.trim()) errors.push('Customer number is required');
+    if (!formData.branch.trim()) errors.push('Branch is required');
+    if (!formData.salesperson.trim()) errors.push('Salesperson is required');
+    if (!formData.paymentType) errors.push('Payment type is required');
+    
+    // Validate items
+    const validItems = items.filter(item => item.product_id && item.quantity > 0);
+    if (validItems.length === 0) errors.push('At least one item with product ID and quantity is required');
+    
+    return errors;
+  };
+
+  // Save invoice (create)
+  const handleSaveInvoice = async () => {
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(', '));
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Prepare invoice data
+      const invoiceData = {
+        customer_name: formData.customerName,
+        customer_number: formData.customerNumber,
+        date_of_invoice: formData.dateOfInvoice,
+        due_date: formData.dueDate,
+        branch: formData.branch, // This should be branch ID in real implementation
+        invoice_type: formData.invoiceType,
+        invoice_items: items
+          .filter(item => item.product_id && item.quantity > 0)
+          .map(item => ({
+            product_id: item.product_id,
+            quantity: item.quantity
+          })),
+        customer_note: customerNote,
+        sub_total: subTotal,
+        delivery_fee: deliveryFee,
+        payment_type: formData.paymentType as 'pos' | 'cash' | 'bank transfer',
+        bank: formData.bank,
+        reference: formData.reference,
+        email_receipt: formData.emailRecipient ? [formData.emailRecipient] : [],
+        sales_person: formData.salesperson // This should be salesperson ID in real implementation
+      };
+
+      const response = await createInvoice(invoiceData);
+      setSuccess('Invoice created successfully!');
+      
+      // Reset form after successful creation
+      setTimeout(() => {
+        window.location.href = '/dashboard/accounting/transaction';
+      }, 2000);
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to create invoice');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save as draft (you can modify status or add draft field)
+  const handleSaveAsDraft = async () => {
+    // For now, we'll save with unpaid status as "draft"
+    await handleSaveInvoice();
+  };
+
+  // Handle form input changes
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   return (
@@ -126,6 +223,18 @@ export default function NewInvoice() {
           {/* Form Title */}
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">New Invoice</h2>
           
+          {/* Error/Success Messages */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+              {success}
+            </div>
+          )}
+          
           {/* Customer Information Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <div>
@@ -138,7 +247,7 @@ export default function NewInvoice() {
                   placeholder="Enter customer's name"
                   className="w-full pl-3 pr-10 py-2 text-gray-600 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent"
                   value={formData.customerName}
-                  onChange={(e) => setFormData({...formData, customerName: e.target.value})}
+                  onChange={(e) => handleInputChange('customerName', e.target.value)}
                 />
                 <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
               </div>
@@ -153,7 +262,7 @@ export default function NewInvoice() {
                   placeholder="Search customer's number"
                   className="w-full pl-3 pr-10 py-2 text-gray-600 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent"
                   value={formData.customerNumber}
-                  onChange={(e) => setFormData({...formData, customerNumber: e.target.value})}
+                  onChange={(e) => handleInputChange('customerNumber', e.target.value)}
                 />
                 <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
               </div>
@@ -168,10 +277,10 @@ export default function NewInvoice() {
               </label>
               <div className="relative">
                 <input
-                  type="text"
+                  type="date"
                   value={formData.dateOfInvoice}
+                  onChange={(e) => handleInputChange('dateOfInvoice', e.target.value)}
                   className="w-full px-3 py-2 text-gray-600 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent pr-10"
-                  readOnly
                 />
                 <ChevronDown className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
               </div>
@@ -182,10 +291,10 @@ export default function NewInvoice() {
               </label>
               <div className="relative">
                 <input
-                  type="text"
+                  type="date"
                   value={formData.dueDate}
+                  onChange={(e) => handleInputChange('dueDate', e.target.value)}
                   className="w-full px-3 text-gray-600 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent pr-10"
-                  readOnly
                 />
                 <ChevronDown className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
               </div>
@@ -202,8 +311,9 @@ export default function NewInvoice() {
                 <select 
                   className="w-full text-gray-600 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent appearance-none pr-10"
                   value={formData.branch}
-                  onChange={(e) => setFormData({...formData, branch: e.target.value})}
+                  onChange={(e) => handleInputChange('branch', e.target.value)}
                 >
+                  <option value="">Select Branch</option>
                   <option value="Gbagada">Gbagada</option>
                   <option value="Lagos">Lagos</option>
                   <option value="Abuja">Abuja</option>
@@ -219,11 +329,13 @@ export default function NewInvoice() {
                 <select 
                   className="w-full text-gray-600 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent appearance-none pr-10"
                   value={formData.invoiceType}
-                  onChange={(e) => setFormData({...formData, invoiceType: e.target.value})}
+                  onChange={(e) => handleInputChange('invoiceType', e.target.value)}
                 >
-                  <option value="Sales">Sales</option>
-                  <option value="Service">Service</option>
-                  <option value="Return">Return</option>
+                  <option value="sales">Sales</option>
+                  <option value="repair">Repair</option>
+                  <option value="service">Service</option>
+                  <option value="rental">Rental</option>
+                  <option value="consultation">Consultation</option>
                 </select>
                 <ChevronDown className="absolute right-3 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
               </div>
@@ -251,8 +363,9 @@ export default function NewInvoice() {
                 <select 
                   className="w-full px-3 py-2 text-gray-600 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent appearance-none pr-10"
                   value={formData.salesperson}
-                  onChange={(e) => setFormData({...formData, salesperson: e.target.value})}
+                  onChange={(e) => handleInputChange('salesperson', e.target.value)}
                 >
+                  <option value="">Select Salesperson</option>
                   <option value="Chineye">Chineye</option>
                   <option value="John">John</option>
                   <option value="Sarah">Sarah</option>
@@ -271,11 +384,9 @@ export default function NewInvoice() {
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
                       <th className="text-left p-3 text-sm font-medium text-gray-700 w-80">Item Details</th>
-                      <th className="text-left p-3 text-sm font-medium text-gray-700">Imei/Sku</th>
+                      <th className="text-left p-3 text-sm font-medium text-gray-700">Product ID</th>
                       <th className="text-left p-3 text-sm font-medium text-gray-700">Quantity</th>
                       <th className="text-left p-3 text-sm font-medium text-gray-700">Price</th>
-                      <th className="text-left p-3 text-sm font-medium text-gray-700">Discount</th>
-                      <th className="text-left p-3 text-sm font-medium text-gray-700">Tax</th>
                       <th className="text-left p-3 text-sm font-medium text-gray-700">Total Amount</th>
                     </tr>
                   </thead>
@@ -309,12 +420,34 @@ export default function NewInvoice() {
                             </div>
                           </div>
                         </td>
-                        <td className="p-3 text-gray-600 text-sm border-r border-gray-200">{item.itemSku}</td>
-                        <td className="p-3 text-gray-600 text-sm border-r border-gray-200">{item.quantity}</td>
-                        <td className="p-3 text-gray-600 text-sm border-r border-gray-200">{item.price.toLocaleString()}</td>
-                        <td className="p-3 text-gray-600 text-sm border-r border-gray-200">{item.discount.toLocaleString()}</td>
-                        <td className="p-3 text-gray-600 text-sm border-r border-gray-200">{item.tax.toLocaleString()}</td>
-                        <td className="p-3 text-gray-600 text-sm font-medium">{item.totalAmount.toLocaleString()}</td>
+                        <td className="p-3 border-r border-gray-200">
+                          <input
+                            type="text"
+                            placeholder="Product ID"
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            value={item.product_id}
+                            onChange={(e) => updateItem(item.id, 'product_id', e.target.value)}
+                          />
+                        </td>
+                        <td className="p-3 border-r border-gray-200">
+                          <input
+                            type="number"
+                            placeholder="0"
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            value={item.quantity}
+                            onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                          />
+                        </td>
+                        <td className="p-3 border-r border-gray-200">
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            value={item.price}
+                            onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
+                          />
+                        </td>
+                        <td className="p-3 text-gray-600 text-sm font-medium">₦{item.totalAmount.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -423,13 +556,13 @@ export default function NewInvoice() {
                   <div className="relative">
                     <select 
                       className="w-full px-3 text-gray-600 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent appearance-none pr-10"
-                      value={formData.paymentStatus}
-                      onChange={(e) => setFormData({...formData, paymentStatus: e.target.value})}
+                      value={formData.paymentType}
+                      onChange={(e) => handleInputChange('paymentType', e.target.value)}
                     >
                       <option value="">Choose the Payment Mode</option>
                       <option value="cash">Cash</option>
-                      <option value="card">Card</option>
-                      <option value="transfer">Transfer</option>
+                      <option value="pos">POS</option>
+                      <option value="bank transfer">Bank Transfer</option>
                     </select>
                     <ChevronDown className="absolute right-3 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
                   </div>
@@ -443,7 +576,7 @@ export default function NewInvoice() {
                     placeholder="Type the receiving Bank"
                     className="w-full px-3 py-2 border text-gray-600 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent"
                     value={formData.bank}
-                    onChange={(e) => setFormData({...formData, bank: e.target.value})}
+                    onChange={(e) => handleInputChange('bank', e.target.value)}
                   />
                 </div>
               </div>
@@ -457,19 +590,19 @@ export default function NewInvoice() {
                     type="text"
                     className="w-full px-3 py-2 border text-gray-600 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent"
                     value={formData.reference}
-                    onChange={(e) => setFormData({...formData, reference: e.target.value})}
+                    onChange={(e) => handleInputChange('reference', e.target.value)}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Branch
+                    Additional Notes
                   </label>
                   <input
                     type="text"
-                    placeholder="Type the Branch Sold from"
+                    placeholder="Any additional notes"
                     className="w-full px-3 py-2 border text-gray-600 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent"
-                    value={formData.branchSoldFrom}
-                    onChange={(e) => setFormData({...formData, branchSoldFrom: e.target.value})}
+                    value={formData.reference}
+                    onChange={(e) => handleInputChange('reference', e.target.value)}
                   />
                 </div>
               </div>
@@ -479,7 +612,7 @@ export default function NewInvoice() {
             <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-gray-700">Sub Total</span>
-                <span className="text-sm text-gray-800 font-medium">{subTotal}</span>
+                <span className="text-sm text-gray-800 font-medium">₦{subTotal.toLocaleString()}</span>
               </div>
               <div className="text-xs text-gray-500 text-right">(Including Tax)</div>
 
@@ -489,14 +622,14 @@ export default function NewInvoice() {
                   type="text"
                   className="w-24 px-2 py-1 border text-gray-600 border-gray-300 rounded text-sm text-right"
                   value={formData.deliveryFee}
-                  onChange={(e) => setFormData({...formData, deliveryFee: e.target.value})}
+                  onChange={(e) => handleInputChange('deliveryFee', e.target.value)}
                 />
               </div>
 
               <div className="border-t pt-4">
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-semibold text-gray-800">Total (NGN)</span>
-                  <span className="text-lg text-gray-800 font-semibold">{totalWithDelivery}</span>
+                  <span className="text-lg text-gray-800 font-semibold">₦{totalWithDelivery.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -504,11 +637,18 @@ export default function NewInvoice() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 mb-4 sm:mb-6">
-            <button className="px-6 py-2 bg-[#E866B7] text-white rounded-lg hover:bg-pink-600 transition-colors flex items-center justify-center gap-2">
+            <button 
+              onClick={handleSaveAsDraft}
+              disabled={loading}
+              className="px-6 py-2 bg-[#E866B7] text-white rounded-lg hover:bg-pink-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Save className="h-4 w-4" />
-              Save as Draft
+              {loading ? 'Saving...' : 'Save Invoice'}
             </button>
-            <button className="px-6 py-2 bg-[#E866B7] text-white rounded-lg hover:bg-pink-600 transition-colors flex items-center justify-center gap-2">
+            <button 
+              onClick={() => window.print()}
+              className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
+            >
               <FileText className="h-4 w-4" />
               Generate PDF
             </button>
@@ -522,8 +662,17 @@ export default function NewInvoice() {
                 <UserPlus className="h-4 w-4" />
                 Add New
               </button>
-              <span className="text-sm text-gray-700 break-all">{formData.emailRecipient}</span>
-              <button className="w-full sm:w-auto px-4 py-2 bg-[#E866B7] text-white rounded-lg hover:bg-pink-600 transition-colors text-sm flex items-center justify-center gap-2">
+              <input
+                type="email"
+                placeholder="Enter email address"
+                className="flex-1 px-3 py-2 text-gray-700 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E866B7] focus:border-transparent text-sm"
+                value={formData.emailRecipient}
+                onChange={(e) => handleInputChange('emailRecipient', e.target.value)}
+              />
+              <button 
+                onClick={() => alert('Email functionality not implemented yet')}
+                className="w-full sm:w-auto px-4 py-2 bg-[#E866B7] text-white rounded-lg hover:bg-pink-600 transition-colors text-sm flex items-center justify-center gap-2"
+              >
                 <Mail className="h-4 w-4" />
                 Send to Email
               </button>
