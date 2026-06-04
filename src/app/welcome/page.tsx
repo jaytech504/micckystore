@@ -116,7 +116,7 @@ const LoginPage = () => {
         <div className="w-1/2 bg-gray-50 flex items-center justify-center px-12">
           <div className="w-full max-w-md">
             <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome</h1>
-            <p className="text-gray-500 mb-8">Log into your account</p>
+            <p className="text-gray-500 mb-8">Welcome to your account</p>
 
             {error && (
               <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm">
@@ -132,7 +132,7 @@ const LoginPage = () => {
             <form onSubmit={handleLogin} className="space-y-6">
               <div>
                 <label className="block text-gray-600 text-sm mb-2">
-                  Enter Staff ID/Email
+                  Enter Staff Email
                 </label>
                 <input
                   type="email"
@@ -249,10 +249,7 @@ const LoginPage = () => {
           </div>
 
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Sign in</h1>
-            <p className="text-gray-500 text-sm">
-              Don&apos;t have an account?{' '}
-              <span className="text-yellow-500 font-medium">Contact Admin</span>
-            </p>
+            
         </div>
 
         <div className="px-6">
