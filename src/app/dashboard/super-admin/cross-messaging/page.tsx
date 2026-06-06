@@ -191,30 +191,7 @@ const CrossMessagingMain = () => {
 
   const { formatTimestamp, getStatusColor, getChannelIcon } = useMessageUtils();
 
-  // Transform analytics data to match the expected interface
-  const messagingStats = analytics ? {
-    totalMessages: {
-      count: analytics.totalMessages,
-      percentageChange: 0, // Calculate based on historical data when available
-      timeframe: 'today'
-    },
-    unreadMessages: {
-      count: analytics.totalMessages - analytics.readCount,
-      percentageChange: 0,
-      timeframe: 'today'
-    },
-    avgResponseTime: {
-      time: '2.5 min', // This would come from API when available
-      percentageChange: 0,
-      timeframe: 'today'
-    },
-    onlineSalesRep: {
-      active: 5, // This would come from a staff API when available
-      total: 8,
-      percentageChange: 0,
-      timeframe: 'today'
-    }
-  } : null;
+  
 
   // Transform messages to activities format
   const messageActivities = messages?.slice(0, 10).map(msg => ({
