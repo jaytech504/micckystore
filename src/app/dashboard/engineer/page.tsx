@@ -26,68 +26,7 @@ interface RepairDetailModalProps {
 }
 
 // Mock data for repairs
-const repairData: Repair[] = [
-  {
-    id: 'MSR-00086532',
-    device: 'iPhone 15 Pro',
-    imei: '29371130713',
-    customer: 'Samuel Monday',
-    issue: 'Cracked screen, touch not responding in.....',
-    date: 'Aug 07',
-    status: 'pending',
-    priority: 'urgent'
-  },
-  {
-    id: 'MSR-00086532',
-    device: 'Samsung Galaxy S24',
-    imei: '29371130713',
-    customer: 'Chineye Deo',
-    issue: 'Battery drains quickly, overheating issues.....',
-    date: 'Aug 07',
-    status: 'in progress',
-    priority: 'normal'
-  },
-  {
-    id: 'MSR-00086532',
-    device: 'Macbook pro 2021',
-    imei: '29371130713',
-    customer: 'Michael Oye',
-    issue: 'Liquid damage, keyboard not working....',
-    date: 'Aug 07',
-    status: 'completed',
-    priority: 'normal'
-  },
-  {
-    id: 'MSR-00086532',
-    device: 'iPad Air 5th Gen',
-    imei: '29371130713',
-    customer: 'Samuel Monday',
-    issue: 'Screen flickering, random restarts....',
-    date: 'Aug 07',
-    status: 'delayed',
-    priority: 'normal'
-  },
-  {
-    id: 'MSR-00086532',
-    device: 'iPhone 15 Pro',
-    imei: '29371130713',
-    customer: 'Samuel Monday',
-    issue: 'Cracked screen, touch not responding in.....',
-    date: 'Aug 07',
-    status: 'pending',
-    priority: 'urgent'
-  },
-  {
-    id: 'MSR-00086532',
-    device: 'iPhone 15 Pro',
-    imei: '29371130713',
-    customer: 'Samuel Monday',
-    issue: 'Cracked screen, touch not responding in.....',
-    date: 'Aug 07',
-    status: 'pending',
-    priority: 'urgent'
-  }
-];
+
 
 const statusColors: Record<StatusType, string> = {
   pending: 'bg-red-100 text-red-700',
