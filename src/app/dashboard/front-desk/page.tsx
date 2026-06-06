@@ -162,42 +162,7 @@ export default function DashboardMain(): React.ReactElement {
     return pending.length || 0;
   }, [repairs]);
 
-  const orders: Order[] = [
-    {
-      id: 1,
-      product: 'iPhone 15 Pro Repair',
-      orderId: 'ORD-1001',
-      customer: 'John Doe',
-      source: 'Walk-in',
-      amount: '₦120,000',
-      stock: 2,
-      status: 'pending',
-      action: 'create-receipt',
-      badges: ['Pending']
-    },
-    {
-      id: 2,
-      product: 'Samsung S24 Screen',
-      orderId: 'ORD-1002',
-      customer: 'Jane Smith',
-      source: 'Online',
-      amount: '₦40,000',
-      status: 'approved',
-      action: 'create-receipt',
-      badges: ['Approved']
-    },
-    {
-      id: 3,
-      product: 'Itel S24 Screen',
-      orderId: 'ORD-1003',
-      customer: 'Jane Doe',
-      source: 'Online',
-      amount: '₦40,000',
-      status: 'cancelled',
-      action: 'create-receipt',
-      badges: ['Cancelled']
-    }
-  ];
+  
 
   const getStatusBadge = (badge: string): string => {
     switch (badge.toLowerCase()) {
